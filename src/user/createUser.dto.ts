@@ -1,22 +1,15 @@
-import { Type } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, ValidateNested } from "class-validator";
-// import { CreateUserSettingsDto } from "./createUserSettings.dto";
-
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateUserDto {
-    // This is the Data Transfer Object (DTO) for creating a new user.
-    // It defines the structure and validation rules for the user data.
-    
-    
-    @IsString()
-    name: string;
+  @IsString()
+  @IsNotEmpty()
+  name: string;
 
-    @IsString()
-    email: string;
+  @IsString()
+  @IsNotEmpty()
+  email: string;
 
-    
-
-
-
-
+  @IsString()
+  @IsNotEmpty()
+  password: string;
 }

@@ -47,6 +47,7 @@ describe('BookController', () => {
           name: 'Clean Architecture',
           Author: 'Robert C. Martin',
           ISBN: '9780134494166',
+          status: 'available',
         },
       ];
 
@@ -63,6 +64,7 @@ describe('BookController', () => {
         name: 'Working Effectively with Legacy Code',
         Author: 'Michael Feathers',
         ISBN: '9780131177055',
+        status: 'available',
       };
       const createdBook = {
         bookid: 8,
@@ -81,6 +83,7 @@ describe('BookController', () => {
     it('should convert the id to a number and pass update data to the service', async () => {
       const dto: UpdateBookDto = {
         name: 'Updated Name',
+        status: 'checked_out',
       };
       const updatedBook = {
         bookid: 3,
@@ -88,6 +91,7 @@ describe('BookController', () => {
         name: 'Updated Name',
         Author: 'Kent Beck',
         ISBN: '9780321146533',
+        status: 'checked_out',
       };
 
       service.update.mockResolvedValue(updatedBook);

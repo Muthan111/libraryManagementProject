@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { book } from './book.entity';
+import { CreateBookDto } from './createBook.dto';
+import { UpdateBookDto } from './updateBook.dto';
 
 @Injectable()
 export class BookService {
@@ -14,7 +16,7 @@ export class BookService {
     return this.bookRepository.find();
   }
 
-  async create(bookData: Partial<book>) {
+  async create(bookData: CreateBookDto) {
     const enteredData = this.bookRepository.create(bookData);
     const savedBook = await this.bookRepository.save(enteredData);
 
@@ -22,7 +24,7 @@ export class BookService {
     return this.bookRepository.save(savedBook);
   }
 
-  async update(bookid: number, bookData: Partial<book>) {
+  async update(bookid: number, bookData: UpdateBookDto) {
     const existingBook = await this.bookRepository.findOne({
       where: { bookid },
     });

@@ -15,4 +15,7 @@ export class book {
 
   @Column()
   ISBN: string;
+
+  @Column()
+  status: string
 }

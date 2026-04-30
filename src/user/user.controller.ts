@@ -1,29 +1,65 @@
-import { Controller, Get,Post,Body } from '@nestjs/common';
-import {UserService} from "./user.service"
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
-import  {CreateUserDto} from "./createUser.dto"
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { UserService } from './user.service';
+import { ApiBody, ApiOperation } from '@nestjs/swagger';
+import { CreateUserDto } from './createUser.dto';
+import { UpdateUserDto } from './updateUser.dto';
+
 @Controller('user')
 export class UserController {
+  constructor(private readonly userService: UserService) {}
 
-    constructor(private readonly userService: UserService) {}
-    @ApiOperation({ summary: 'Get Users' })
-    @Get()
-    findAllUsers(){
-        return this.userService.findAll();
-    }
+  @ApiOperation({ summary: 'Get Users' })
+  @Get()
+  findAllUsers() {
+    return this.userService.findAll();
+  }
 
-    @Post()
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                email: { type: 'string' },
-            },
-        },
-    })
-    createUser(@Body() data : CreateUserDto){
-        return this.userService.create(data);
-    }
+  @Post()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        email: { type: 'string' },
+        password: { type: 'string' },
+      },
+      required: ['name', 'email', 'password'],
+    },
+  })
+  createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
 
+  @Get('customer-code/:customerCode')
+  findUserByCustomerCode(@Param('customerCode') customerCode: string) {
+    return this.userService.findUserByCustomerCode(customerCode);
+  }
+
+  @Patch(':id')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        email: { type: 'string' },
+        password: { type: 'string' },
+      },
+    },
+  })
+  updateUser(@Param('id') id: string, @Body() data: UpdateUserDto) {
+    return this.userService.update(Number(id), data);
+  }
+
+  @Delete()
+  deleteAllUsers() {
+    return this.userService.deleteAll();
+  }
 }

@@ -4,6 +4,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 import { book } from './book.entity';
 import { BookService } from './book.service';
+import { CreateBookDto } from './createBook.dto';
+import { UpdateBookDto } from './updateBook.dto';
 
 describe('BookService', () => {
   let service: BookService;
@@ -44,6 +46,7 @@ describe('BookService', () => {
           name: 'Clean Code',
           Author: 'Robert C. Martin',
           ISBN: '9780132350884',
+          status: 'available',
         },
         {
           bookid: 2,
@@ -51,6 +54,7 @@ describe('BookService', () => {
           name: 'Refactoring',
           Author: 'Martin Fowler',
           ISBN: '9780201485677',
+          status: 'checked_out',
         },
       ];
 
@@ -63,10 +67,11 @@ describe('BookService', () => {
 
   describe('create', () => {
     it('should create a book, generate the book code, and save it twice', async () => {
-      const bookData: Partial<book> = {
+      const bookData: CreateBookDto = {
         name: 'Domain-Driven Design',
         Author: 'Eric Evans',
         ISBN: '9780321125217',
+        status: 'available',
       };
       const createdBook = {
         ...bookData,
@@ -77,6 +82,7 @@ describe('BookService', () => {
         name: 'Domain-Driven Design',
         Author: 'Eric Evans',
         ISBN: '9780321125217',
+        status: 'available',
       };
       const finalSavedBook: book = {
         ...firstSavedBook,
@@ -106,9 +112,11 @@ describe('BookService', () => {
         name: 'The Pragmatic Programmer',
         Author: 'Andrew Hunt',
         ISBN: '9780201616224',
+        status: 'available',
       };
-      const updateData: Partial<book> = {
+      const updateData: UpdateBookDto = {
         name: 'The Pragmatic Programmer 20th Anniversary Edition',
+        status: 'reserved',
       };
       const updatedBook: book = {
         ...existingBook,

@@ -10,7 +10,7 @@ import {
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBody, ApiOperation } from '@nestjs/swagger';
 @Controller('book')
 export class BookController {
   constructor(private readonly bookService: BookService) {}
@@ -27,7 +27,8 @@ export class BookController {
             properties: {
                 name: { type: 'string' },
                 Author: { type: 'string' },
-                ISBN: { type: 'string' }
+                ISBN: { type: 'string' },
+                status: { type: 'string' }
             },
         },
     })
@@ -36,6 +37,17 @@ export class BookController {
   }
 
   @Patch(':id')
+  @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                name: { type: 'string' },
+                Author: { type: 'string' },
+                ISBN: { type: 'string' },
+                status: { type: 'string' }
+            },
+        },
+    })
   updateBook(@Param('id') id: string, @Body() data: UpdateBookDto) {
     return this.bookService.update(Number(id), data);
   }
