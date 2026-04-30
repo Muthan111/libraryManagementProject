@@ -1,5 +1,6 @@
 /node_modules
 /dist
+.env
 
 # Playwright
 node_modules/
