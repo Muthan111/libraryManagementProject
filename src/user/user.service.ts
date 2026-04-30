@@ -11,8 +11,11 @@ export class UserService {
     return this.userRepository.find();
   }
 
-  create(userData: Partial<user>) {
+  async create(userData: Partial<user>) {
     const user1 = this.userRepository.create(userData);
-    return this.userRepository.save(user1);
+    const savedUser = await this.userRepository.save(user1);
+
+    savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
+    return this.userRepository.save(savedUser);
   }
 }

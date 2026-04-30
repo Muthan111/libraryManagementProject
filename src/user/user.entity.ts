@@ -4,6 +4,9 @@ export class user {
     @PrimaryGeneratedColumn()
     id: number;
 
+    @Column({ unique: true, nullable: true })
+    customerCode: string;
+
     @Column()
     name: string;
 
