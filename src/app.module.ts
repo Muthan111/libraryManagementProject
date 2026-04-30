@@ -6,6 +6,7 @@ import { UserModule } from './user/user.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BookModule } from './book/book.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
       synchronize: true,
     }),
     BookModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
