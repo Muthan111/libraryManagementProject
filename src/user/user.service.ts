@@ -4,6 +4,7 @@ import { DeleteResult, Repository } from 'typeorm';
 import { user } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -17,7 +18,12 @@ export class UserService {
   }
 
   async create(userData: CreateUserDto) {
-    const user1 = this.userRepository.create(userData);
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const user1 = this.userRepository.create(
+      {...userData,
+    password: hashedPassword,
+      }
+    );
     const savedUser = await this.userRepository.save(user1);
 
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
@@ -33,7 +39,12 @@ export class UserService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    Object.assign(existingUser, userData);
+    const updatePayload = { ...userData };
+    if (updatePayload.password) {
+      updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
+    }
+
+    Object.assign(existingUser, updatePayload);
     return this.userRepository.save(existingUser);
   }
 
@@ -46,6 +57,18 @@ export class UserService {
       throw new NotFoundException(
         `User with customer code ${customerCode} not found`,
       );
+    }
+
+    return existingUser;
+  }
+
+  async findUserByEmail(email: string) {
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    if (!existingUser) {
+      return null;
     }
 
     return existingUser;

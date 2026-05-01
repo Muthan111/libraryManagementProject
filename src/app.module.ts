@@ -7,7 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { BookModule } from './book/book.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { AuthModule } from './auth/auth.module';
-
+import { PassportModule } from '@nestjs/passport';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -27,6 +27,7 @@ import { AuthModule } from './auth/auth.module';
     }),
     BookModule,
     AuthModule,
+    PassportModule.register({ session: true })
   ],
   controllers: [AppController],
   providers: [AppService],

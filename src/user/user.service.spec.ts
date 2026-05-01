@@ -6,6 +6,7 @@ import { UserService } from './user.service';
 import { user } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
+import * as bcrypt from 'bcrypt';
 
 describe('UserService', () => {
   let service: UserService;
@@ -58,28 +59,33 @@ describe('UserService', () => {
         email: 'charlie@example.com',
         password: 'charlie-secret',
       };
+      const hashedPassword = 'hashed-charlie-secret';
       const createdUser: user = {
         id: 3,
         customerCode: 'cus003',
         name: 'Charlie',
         email: 'charlie@example.com',
-        password: 'charlie-secret',
+        password: hashedPassword,
       };
       const createdUserWithoutCode: user = {
         id: 3,
         customerCode: undefined,
         name: 'Charlie',
         email: 'charlie@example.com',
-        password: 'charlie-secret',
+        password: hashedPassword,
       };
 
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue(hashedPassword as never);
       repository.create!.mockReturnValue(createdUserWithoutCode);
       repository.save!
         .mockResolvedValueOnce(createdUserWithoutCode)
         .mockResolvedValueOnce(createdUser);
 
       await expect(service.create(userData)).resolves.toEqual(createdUser);
-      expect(repository.create).toHaveBeenCalledWith(userData);
+      expect(repository.create).toHaveBeenCalledWith({
+        ...userData,
+        password: hashedPassword,
+      });
       expect(repository.save).toHaveBeenNthCalledWith(1, createdUserWithoutCode);
       expect(repository.save).toHaveBeenNthCalledWith(2, {
         ...createdUserWithoutCode,
@@ -101,11 +107,14 @@ describe('UserService', () => {
         name: 'Diana Prince',
         password: 'new-secret',
       };
+      const hashedPassword = 'hashed-new-secret';
       const updatedUser: user = {
         ...existingUser,
         ...updateData,
+        password: hashedPassword,
       };
 
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue(hashedPassword as never);
       repository.findOne!.mockResolvedValue(existingUser);
       repository.save!.mockResolvedValue(updatedUser);
 
