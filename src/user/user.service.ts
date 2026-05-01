@@ -27,7 +27,8 @@ export class UserService {
     const savedUser = await this.userRepository.save(user1);
 
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
-    return this.userRepository.save(savedUser);
+    this.userRepository.save(savedUser)
+    return "User " + savedUser.name +" was created ";
   }
 
   async update(id: number, userData: UpdateUserDto) {

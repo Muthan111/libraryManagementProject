@@ -7,7 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(
     session({
-      secret: "secret",
+      secret: process.env.SESSION_SECRET || 'secret',
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 360000 }
