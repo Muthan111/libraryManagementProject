@@ -19,16 +19,14 @@ export class UserService {
 
   async create(userData: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const user1 = this.userRepository.create(
-      {...userData,
-    password: hashedPassword,
-      }
-    );
+    const user1 = this.userRepository.create({
+      ...userData,
+      password: hashedPassword,
+    });
     const savedUser = await this.userRepository.save(user1);
 
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
-    this.userRepository.save(savedUser)
-    return "User " + savedUser.name +" was created ";
+    return this.userRepository.save(savedUser);
   }
 
   async update(id: number, userData: UpdateUserDto) {
