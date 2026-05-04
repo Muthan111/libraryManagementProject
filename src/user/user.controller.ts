@@ -11,6 +11,9 @@ import { UserService } from './user.service';
 import { ApiBody, ApiOperation } from '@nestjs/swagger';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
+import { Roles } from '../user/role.decorator';
+import { RolesGuard } from '../user/role.guard';
+import { Role } from '../user/user.enum';
 
 @Controller('user')
 export class UserController {
@@ -30,8 +33,9 @@ export class UserController {
         name: { type: 'string' },
         email: { type: 'string' },
         password: { type: 'string' },
+        role: { type: 'string' },
       },
-      required: ['name', 'email', 'password'],
+      required: ['name', 'email', 'password', 'role'],
     },
   })
   createUser(@Body() data: CreateUserDto) {
@@ -61,5 +65,10 @@ export class UserController {
   @Delete()
   deleteAllUsers() {
     return this.userService.deleteAll();
+  }
+  @Get("TestRBAC")
+  @Roles(Role.ADMIN)
+  testingRBAC() {
+    return this.userService.testingRBAC();
   }
 }

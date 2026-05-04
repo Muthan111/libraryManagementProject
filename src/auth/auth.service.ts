@@ -12,6 +12,7 @@ export class AuthService {
 
     async validateUser(email: string, password: string): Promise<any> {
         const user = await this.service.findUserByEmail(email);
+        console.log('User found for email:', email, user); // Log the user found
         if (user && await bcrypt.compare(password, user.password)) {
             const { password, ...result } = user;
             console.log('Validated User:', result); // Log the validated user
@@ -24,7 +25,8 @@ export class AuthService {
         const payload = {
             
             sub: user.id,   // standard practice
-            email: user.email
+            email: user.email,
+            role: user.role, // include role in the payload
             
             
         };
@@ -37,4 +39,7 @@ export class AuthService {
     async testingAuthModule(){
         return "Hello You are Successfully Logged In"
     }
+    async testingRBAC(){
+    return "Only admin can access this endpoint";
+  }
 }

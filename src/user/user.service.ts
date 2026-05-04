@@ -19,14 +19,19 @@ export class UserService {
 
   async create(userData: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const user1 = this.userRepository.create({
-      ...userData,
-      password: hashedPassword,
-    });
-    const savedUser = await this.userRepository.save(user1);
+    const user = this.userRepository.create({
+    ...userData,
+    password: hashedPassword,
+  });
+  
+
+    const savedUser = await this.userRepository.save(user);
 
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
-    return this.userRepository.save(savedUser);
+
+    const final = await this.userRepository.save(savedUser);
+
+    return final;
   }
 
   async update(id: number, userData: UpdateUserDto) {
@@ -79,5 +84,8 @@ export class UserService {
     return {
       message: `${deleteResult.affected ?? 0} users deleted successfully`,
     };
+  }
+  async testingRBAC(){
+    return "Only admin can access this endpoint";
   }
 }

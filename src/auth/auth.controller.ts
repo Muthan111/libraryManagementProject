@@ -3,6 +3,9 @@ import { AuthService } from './auth.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiConsumes, ApiBearerAuth } from '@nestjs/swagger';
 import { LocalAuthGuard } from '../auth/local-auth.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../user/role.decorator';
+import { RolesGuard } from '../user/role.guard';
+import { Role } from '../user/user.enum';
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService ) {}
@@ -30,4 +33,11 @@ export class AuthController {
     async testAuthentication(){
         return this.authService.testingAuthModule()
     }
+    @Get("TestRBAC")
+    @UseGuards(JwtAuthGuard,RolesGuard)
+    @ApiBearerAuth('access-token')
+    @Roles(Role.ADMIN)
+      testingRBAC() {
+        return this.authService.testingRBAC();
+      }
 }
