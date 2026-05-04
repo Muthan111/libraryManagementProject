@@ -59,7 +59,10 @@ export class UserService {
     Object.assign(existingUser, updatePayload);
     return this.userRepository.save(existingUser);
     }
-    catch {
+    catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new NotFoundException("Error updating user")
     }
     
@@ -79,7 +82,10 @@ export class UserService {
 
     return existingUser;
     }
-    catch {
+    catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new NotFoundException("Error finding user by customer code")
     }
     
