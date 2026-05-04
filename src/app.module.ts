@@ -24,6 +24,9 @@ import { PassportModule } from '@nestjs/passport';
 
       autoLoadEntities: true,
       synchronize: true,
+      extra: {
+        connectionLimit: 10, // pool size
+      },
     }),
     BookModule,
     AuthModule,

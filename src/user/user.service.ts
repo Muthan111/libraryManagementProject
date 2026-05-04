@@ -14,28 +14,36 @@ export class UserService {
   ) {}
 
   findAll() {
-    return this.userRepository.find();
+    try{
+      return this.userRepository.find();
+    }
+    catch(error){
+      throw new NotFoundException("No users found");
+    }
+    
   }
 
   async create(userData: CreateUserDto) {
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    try {
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
     const user = this.userRepository.create({
     ...userData,
     password: hashedPassword,
   });
-  
-
     const savedUser = await this.userRepository.save(user);
-
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
-
     const final = await this.userRepository.save(savedUser);
-
     return final;
+    }
+    catch {
+      throw new NotFoundException("Error creating user")
+    }
+    
   }
 
   async update(id: number, userData: UpdateUserDto) {
-    const existingUser = await this.userRepository.findOne({
+    try {
+      const existingUser = await this.userRepository.findOne({
       where: { id },
     });
 
@@ -50,10 +58,16 @@ export class UserService {
 
     Object.assign(existingUser, updatePayload);
     return this.userRepository.save(existingUser);
+    }
+    catch {
+      throw new NotFoundException("Error updating user")
+    }
+    
   }
 
   async findUserByCustomerCode(customerCode: string) {
-    const existingUser = await this.userRepository.findOne({
+    try {
+      const existingUser = await this.userRepository.findOne({
       where: { customerCode },
     });
 
@@ -64,10 +78,16 @@ export class UserService {
     }
 
     return existingUser;
+    }
+    catch {
+      throw new NotFoundException("Error finding user by customer code")
+    }
+    
   }
 
   async findUserByEmail(email: string) {
-    const existingUser = await this.userRepository.findOne({
+    try {
+      const existingUser = await this.userRepository.findOne({
       where: { email },
     });
 
@@ -76,6 +96,11 @@ export class UserService {
     }
 
     return existingUser;
+    }
+    catch {
+      throw new NotFoundException("Error finding user by email")
+    }
+    
   }
 
   async deleteAll() {

@@ -1,3 +1,7 @@
+jest.mock('src/book/book.entity', () => ({
+  Book: class Book {},
+}), { virtual: true });
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookController } from './book.controller';
 import { BookService } from './book.service';
@@ -11,6 +15,8 @@ describe('BookController', () => {
     create: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
+    borrowBook: jest.Mock;
+    returnBook: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -19,6 +25,8 @@ describe('BookController', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      borrowBook: jest.fn(),
+      returnBook: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -47,7 +55,9 @@ describe('BookController', () => {
           name: 'Clean Architecture',
           Author: 'Robert C. Martin',
           ISBN: '9780134494166',
-          status: 'available',
+          status: 'AVAILABLE',
+          borrowedBy: null,
+          borrowedById: null,
         },
       ];
 
@@ -64,11 +74,13 @@ describe('BookController', () => {
         name: 'Working Effectively with Legacy Code',
         Author: 'Michael Feathers',
         ISBN: '9780131177055',
-        status: 'available',
+        status: 'AVAILABLE',
       };
       const createdBook = {
         bookid: 8,
         bookCode: 'BK008',
+        borrowedBy: null,
+        borrowedById: null,
         ...dto,
       };
 
@@ -83,7 +95,7 @@ describe('BookController', () => {
     it('should convert the id to a number and pass update data to the service', async () => {
       const dto: UpdateBookDto = {
         name: 'Updated Name',
-        status: 'checked_out',
+        status: 'BORROWED',
       };
       const updatedBook = {
         bookid: 3,
@@ -91,7 +103,9 @@ describe('BookController', () => {
         name: 'Updated Name',
         Author: 'Kent Beck',
         ISBN: '9780321146533',
-        status: 'checked_out',
+        status: 'BORROWED',
+        borrowedBy: null,
+        borrowedById: null,
       };
 
       service.update.mockResolvedValue(updatedBook);
@@ -111,6 +125,48 @@ describe('BookController', () => {
 
       await expect(controller.deleteBook('6')).resolves.toEqual(result);
       expect(service.delete).toHaveBeenCalledWith(6);
+    });
+  });
+
+  describe('borrowBook', () => {
+    it('should pass bookCode and customerCode to the service', async () => {
+      const payload = { bookCode: 'BK010', customerCode: 'cus010' };
+      const borrowedBook = {
+        bookid: 10,
+        bookCode: 'BK010',
+        name: 'Patterns of Enterprise Application Architecture',
+        Author: 'Martin Fowler',
+        ISBN: '9780321127426',
+        status: 'BORROWED',
+        borrowedById: 'cus010',
+      };
+
+      service.borrowBook.mockResolvedValue(borrowedBook);
+
+      await expect(controller.borrowBook(payload)).resolves.toEqual(borrowedBook);
+      expect(service.borrowBook).toHaveBeenCalledWith('BK010', 'cus010');
+    });
+  });
+
+  describe('returnBook', () => {
+    it('should pass bookCode to the service', async () => {
+      const returnedBook = {
+        bookid: 10,
+        bookCode: 'BK010',
+        name: 'Patterns of Enterprise Application Architecture',
+        Author: 'Martin Fowler',
+        ISBN: '9780321127426',
+        status: 'AVAILABLE',
+        borrowedBy: null,
+        borrowedById: null,
+      };
+
+      service.returnBook.mockResolvedValue(returnedBook);
+
+      await expect(
+        controller.returnBook({ bookCode: 'BK010' }),
+      ).resolves.toEqual(returnedBook);
+      expect(service.returnBook).toHaveBeenCalledWith('BK010');
     });
   });
 });

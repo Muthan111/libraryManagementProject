@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
+import { Role } from '../user/user.enum';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -54,6 +55,7 @@ describe('AuthService', () => {
         name: 'Alice',
         email: 'alice@example.com',
         password: 'hashed-password',
+        role: Role.ADMIN,
       };
 
       userService.findUserByEmail.mockResolvedValue(existingUser);
@@ -65,6 +67,7 @@ describe('AuthService', () => {
         id: 1,
         name: 'Alice',
         email: 'alice@example.com',
+        role: Role.ADMIN,
       });
 
       expect(userService.findUserByEmail).toHaveBeenCalledWith(
@@ -92,6 +95,7 @@ describe('AuthService', () => {
         name: 'Bob',
         email: 'bob@example.com',
         password: 'hashed-password',
+        role: Role.MEMBER,
       });
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
@@ -102,11 +106,15 @@ describe('AuthService', () => {
   });
 
   describe('login', () => {
-    it('should sign a JWT with the user id and email and return it as an access token', async () => {
+    it('should sign a JWT with the user id, email, and role and return it as an access token', async () => {
       jwtService.sign.mockReturnValue('signed-jwt');
 
       await expect(
-        service.login({ id: 7, email: 'login@example.com' }),
+        service.login({
+          id: 7,
+          email: 'login@example.com',
+          role: Role.ADMIN,
+        }),
       ).resolves.toEqual({
         access_token: 'signed-jwt',
       });
@@ -114,6 +122,7 @@ describe('AuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: 7,
         email: 'login@example.com',
+        role: Role.ADMIN,
       });
     });
   });
@@ -122,6 +131,14 @@ describe('AuthService', () => {
     it('should return the authentication success message', async () => {
       await expect(service.testingAuthModule()).resolves.toBe(
         'Hello You are Successfully Logged In',
+      );
+    });
+  });
+
+  describe('testingRBAC', () => {
+    it('should return the RBAC message', async () => {
+      await expect(service.testingRBAC()).resolves.toBe(
+        'Only admin can access this endpoint',
       );
     });
   });

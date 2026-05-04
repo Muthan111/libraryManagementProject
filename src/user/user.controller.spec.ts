@@ -1,8 +1,13 @@
+jest.mock('src/book/book.entity', () => ({
+  Book: class Book {},
+}), { virtual: true });
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateUserDto } from './createUser.dto';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './updateUser.dto';
+import { Role } from './user.enum';
 
 describe('UserController', () => {
   let controller: UserController;
@@ -12,6 +17,7 @@ describe('UserController', () => {
     update: jest.Mock;
     findUserByCustomerCode: jest.Mock;
     deleteAll: jest.Mock;
+    testingRBAC: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -21,6 +27,7 @@ describe('UserController', () => {
       update: jest.fn(),
       findUserByCustomerCode: jest.fn(),
       deleteAll: jest.fn(),
+      testingRBAC: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -49,6 +56,8 @@ describe('UserController', () => {
           name: 'Alice',
           email: 'alice@example.com',
           password: 'alice-secret',
+          borrowedBooks: [],
+          role: Role.MEMBER,
         },
       ];
 
@@ -65,10 +74,12 @@ describe('UserController', () => {
         name: 'Bob',
         email: 'bob@example.com',
         password: 'bob-secret',
+        role: Role.ADMIN,
       };
       const createdUser = {
         id: 2,
         customerCode: 'cus002',
+        borrowedBooks: [],
         ...dto,
       };
 
@@ -87,6 +98,8 @@ describe('UserController', () => {
         name: 'Charlie',
         email: 'charlie@example.com',
         password: 'charlie-secret',
+        borrowedBooks: [],
+        role: Role.MEMBER,
       };
 
       service.findUserByCustomerCode.mockResolvedValue(foundUser);
@@ -110,6 +123,8 @@ describe('UserController', () => {
         name: 'Updated Name',
         email: 'updated@example.com',
         password: 'diana-secret',
+        borrowedBooks: [],
+        role: Role.MEMBER,
       };
 
       service.update.mockResolvedValue(updatedUser);
@@ -129,6 +144,19 @@ describe('UserController', () => {
 
       await expect(controller.deleteAllUsers()).resolves.toEqual(result);
       expect(service.deleteAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('testingRBAC', () => {
+    it('should delegate to the service', async () => {
+      service.testingRBAC.mockResolvedValue(
+        'Only admin can access this endpoint',
+      );
+
+      await expect(controller.testingRBAC()).resolves.toBe(
+        'Only admin can access this endpoint',
+      );
+      expect(service.testingRBAC).toHaveBeenCalledTimes(1);
     });
   });
 });
