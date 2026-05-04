@@ -1,6 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
+import { User } from '../user/user.entity';
+
 @Entity()
-export class book {
+export class Book {
   @PrimaryGeneratedColumn()
   bookid: number;
 
@@ -17,5 +25,20 @@ export class book {
   ISBN: string;
 
   @Column()
-  status: string
+  status: string;
+
+  // 👇 Relationship to User via customerCode (cus000)
+  @ManyToOne(() => User, (user) => user.borrowedBooks, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({
+    name: 'borrowedById',
+    referencedColumnName: 'customerCode',
+  })
+  borrowedBy: User | null;
+
+  // 👇 This column stores cus000 directly in DB
+  @Column({ nullable: true })
+  borrowedById: string | null;
 }
