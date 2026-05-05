@@ -22,6 +22,7 @@ export class BookService {
   ) {}
 
   findAll() {
+    
     return this.bookRepository.find();
   }
 

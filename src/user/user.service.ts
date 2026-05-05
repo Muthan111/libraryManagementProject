@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 import { User } from './user.entity';
@@ -14,18 +14,13 @@ export class UserService {
   ) {}
 
   findAll() {
-    try{
-      return this.userRepository.find();
-    }
-    catch(error){
-      throw new NotFoundException("No users found");
-    }
+    return this.userRepository.find();
+    
     
   }
 
   async create(userData: CreateUserDto) {
-    try {
-      const existingUser = await this.userRepository.findOne({
+    const existingUser = await this.userRepository.findOne({
         where: { email: userData.email },
       });
 
@@ -44,19 +39,12 @@ export class UserService {
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
     const final = await this.userRepository.save(savedUser);
     return final;
-    }
-    catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new NotFoundException("Error creating user")
-    }
+    
     
   }
 
   async update(id: number, userData: UpdateUserDto) {
-    try {
-      const existingUser = await this.userRepository.findOne({
+    const existingUser = await this.userRepository.findOne({
       where: { id },
     });
 
@@ -71,19 +59,12 @@ export class UserService {
 
     Object.assign(existingUser, updatePayload);
     return this.userRepository.save(existingUser);
-    }
-    catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new NotFoundException("Error updating user")
-    }
+    
     
   }
 
   async findUserByCustomerCode(customerCode: string) {
-    try {
-      const existingUser = await this.userRepository.findOne({
+    const existingUser = await this.userRepository.findOne({
       where: { customerCode },
     });
 
@@ -94,19 +75,11 @@ export class UserService {
     }
 
     return existingUser;
-    }
-    catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new NotFoundException("Error finding user by customer code")
-    }
     
   }
 
   async findUserByEmail(email: string) {
-    try {
-      const existingUser = await this.userRepository.findOne({
+    const existingUser = await this.userRepository.findOne({
       where: { email },
     });
 
@@ -115,10 +88,7 @@ export class UserService {
     }
 
     return existingUser;
-    }
-    catch {
-      throw new NotFoundException("Error finding user by email")
-    }
+    
     
   }
 
@@ -128,8 +98,7 @@ export class UserService {
     
   }
   async deleteUserByCustomerCode(customerCode: string) {
-    try {
-      const deleteResult: DeleteResult = await this.userRepository.delete({
+    const deleteResult: DeleteResult = await this.userRepository.delete({
       customerCode,
     })
     if (deleteResult.affected === 0) {
@@ -137,13 +106,7 @@ export class UserService {
         `User with customer code ${customerCode} not found`,
       );
     }
-
-  }
-  catch (error) {
-    if (error instanceof NotFoundException) {
-      throw error;
-    }
-  }
+   
   }
 
 }

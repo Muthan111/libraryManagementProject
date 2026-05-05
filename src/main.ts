@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 const session = require('express-session');
 const passport = require('passport');
+import { GlobalExceptionFilter } from './common/exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use(
@@ -15,6 +16,7 @@ async function bootstrap() {
   );
   app.use(passport.initialize());
   app.use(passport.session());
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   const config = new DocumentBuilder()
     .setTitle('Library Management API')
