@@ -1,6 +1,7 @@
 import { Book } from 'src/book/book.entity';
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, PrimaryColumn } from 'typeorm';
 import { Role } from '../user/user.enum';
+import { BorrowRecord } from '../borrow/borrow.entity';
 @Entity()
 export class User {
     @PrimaryGeneratedColumn()
@@ -19,8 +20,8 @@ export class User {
     @Column()
     password: string;
 
-    @OneToMany(() => Book, (book) => book.borrowedBy)
-    borrowedBooks: Book[];
+    @OneToMany(() => BorrowRecord, (borrow) => borrow.user)
+    borrowRecords: BorrowRecord[];
 
     @Column({ type: 'enum', enum: Role, default: Role.MEMBER })
     role: Role;

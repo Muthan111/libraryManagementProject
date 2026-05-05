@@ -15,8 +15,6 @@ describe('BookController', () => {
     create: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
-    borrowBook: jest.Mock;
-    returnBook: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -25,8 +23,6 @@ describe('BookController', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      borrowBook: jest.fn(),
-      returnBook: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -56,8 +52,8 @@ describe('BookController', () => {
           Author: 'Robert C. Martin',
           ISBN: '9780134494166',
           status: 'AVAILABLE',
-          borrowedBy: null,
           borrowedById: null,
+          borrowRecords: [],
         },
       ];
 
@@ -79,8 +75,8 @@ describe('BookController', () => {
       const createdBook = {
         bookid: 8,
         bookCode: 'BK008',
-        borrowedBy: null,
         borrowedById: null,
+        borrowRecords: [],
         ...dto,
       };
 
@@ -104,8 +100,8 @@ describe('BookController', () => {
         Author: 'Kent Beck',
         ISBN: '9780321146533',
         status: 'BORROWED',
-        borrowedBy: null,
         borrowedById: null,
+        borrowRecords: [],
       };
 
       service.update.mockResolvedValue(updatedBook);
@@ -125,48 +121,6 @@ describe('BookController', () => {
 
       await expect(controller.deleteBook('6')).resolves.toEqual(result);
       expect(service.delete).toHaveBeenCalledWith(6);
-    });
-  });
-
-  describe('borrowBook', () => {
-    it('should pass bookCode and customerCode to the service', async () => {
-      const payload = { bookCode: 'BK010', customerCode: 'cus010' };
-      const borrowedBook = {
-        bookid: 10,
-        bookCode: 'BK010',
-        name: 'Patterns of Enterprise Application Architecture',
-        Author: 'Martin Fowler',
-        ISBN: '9780321127426',
-        status: 'BORROWED',
-        borrowedById: 'cus010',
-      };
-
-      service.borrowBook.mockResolvedValue(borrowedBook);
-
-      await expect(controller.borrowBook(payload)).resolves.toEqual(borrowedBook);
-      expect(service.borrowBook).toHaveBeenCalledWith('BK010', 'cus010');
-    });
-  });
-
-  describe('returnBook', () => {
-    it('should pass bookCode to the service', async () => {
-      const returnedBook = {
-        bookid: 10,
-        bookCode: 'BK010',
-        name: 'Patterns of Enterprise Application Architecture',
-        Author: 'Martin Fowler',
-        ISBN: '9780321127426',
-        status: 'AVAILABLE',
-        borrowedBy: null,
-        borrowedById: null,
-      };
-
-      service.returnBook.mockResolvedValue(returnedBook);
-
-      await expect(
-        controller.returnBook({ bookCode: 'BK010' }),
-      ).resolves.toEqual(returnedBook);
-      expect(service.returnBook).toHaveBeenCalledWith('BK010');
     });
   });
 });

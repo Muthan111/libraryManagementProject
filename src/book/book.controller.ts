@@ -57,32 +57,32 @@ export class BookController {
     return this.bookService.delete(Number(id));
   }
 
-  @Post('borrow')
-  @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                bookCode: { type: 'string' },
-                customerCode: { type: 'string' }
-            },
-        },
-    })
-  async borrowBook(@Body() body: { bookCode: string; customerCode: string }) {
-    const { bookCode, customerCode } = body;
-    return this.bookService.borrowBook(bookCode, customerCode);
-  }
+  // @Post('borrow')
+  // @ApiBody({
+  //       schema: {
+  //           type: 'object',
+  //           properties: {
+  //               bookCode: { type: 'string' },
+  //               customerCode: { type: 'string' }
+  //           },
+  //       },
+  //   })
+  // async borrowBook(@Body() body: { bookCode: string; customerCode: string }) {
+  //   const { bookCode, customerCode } = body;
+  //   return this.bookService.borrowBook(bookCode, customerCode);
+  // }
 
-  @Post('return')
-  @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                bookCode: { type: 'string' }
-            },
-        },
-    })
-  async returnBook(@Body() body: { bookCode: string }) {
-    const { bookCode } = body;
-    return this.bookService.returnBook(bookCode);
-  }
+  // @Post('return')
+  // @ApiBody({
+  //       schema: {
+  //           type: 'object',
+  //           properties: {
+  //               bookCode: { type: 'string' }
+  //           },
+  //       },
+  //   })
+  // async returnBook(@Body() body: { bookCode: string }) {
+  //   const { bookCode } = body;
+  //   return this.bookService.returnBook(bookCode);
+  // }
 }

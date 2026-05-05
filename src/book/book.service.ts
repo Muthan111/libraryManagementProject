@@ -52,54 +52,54 @@ export class BookService {
       message: `Book with id ${bookid} deleted successfully`,
     };
   }
-  async borrowBook(bookCode: string, customerCode: string) {
-    // 1. Find user
-    const user = await this.userRepo.findOne({
-      where: { customerCode },
-    });
+  // async borrowBook(bookCode: string, customerCode: string) {
+  //   // 1. Find user
+  //   const user = await this.userRepo.findOne({
+  //     where: { customerCode },
+  //   });
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+  //   if (!user) {
+  //     throw new NotFoundException('User not found');
+  //   }
 
-    // 2. Find book
-    const book = await this.bookRepository.findOne({
-      where: { bookCode },
-    });
+  //   // 2. Find book
+  //   const book = await this.bookRepository.findOne({
+  //     where: { bookCode },
+  //   });
 
-    if (!book) {
-      throw new NotFoundException('Book not found');
-    }
+  //   if (!book) {
+  //     throw new NotFoundException('Book not found');
+  //   }
 
-    // 3. Check if already borrowed
-    if (book.borrowedById) {
-      throw new BadRequestException('Book is already borrowed');
-    }
+  //   // 3. Check if already borrowed
+  //   if (book.borrowedById) {
+  //     throw new BadRequestException('Book is already borrowed');
+  //   }
 
-    // 4. Assign book to user
-    book.borrowedBy = user;
-    book.status = 'BORROWED';
+  //   // 4. Assign book to user
+  //   book.borrowedBy = user;
+  //   book.status = 'BORROWED';
 
-    // 5. Save
-    return await this.bookRepository.save(book);
-  }
-  async returnBook(bookCode: string) {
-  const book = await this.bookRepository.findOne({
-    where: { bookCode },
-  });
+  //   // 5. Save
+  //   return await this.bookRepository.save(book);
+  // }
+//   async returnBook(bookCode: string) {
+//   const book = await this.bookRepository.findOne({
+//     where: { bookCode },
+//   });
 
-  if (!book) {
-    throw new NotFoundException('Book not found');
-  }
+//   if (!book) {
+//     throw new NotFoundException('Book not found');
+//   }
 
-  if (!book.borrowedById) {
-    throw new BadRequestException('Book is not borrowed');
-  }
+//   if (!book.borrowedById) {
+//     throw new BadRequestException('Book is not borrowed');
+//   }
 
-  book.borrowedBy = null;
-  book.status = 'AVAILABLE';
+//   book.borrowedBy = null;
+//   book.status = 'AVAILABLE';
 
-  return await this.bookRepository.save(book);
-}
+//   return await this.bookRepository.save(book);
+// }
   
 }

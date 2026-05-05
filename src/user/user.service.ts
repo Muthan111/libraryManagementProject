@@ -110,11 +110,27 @@ export class UserService {
   }
 
   async deleteAll() {
-    const deleteResult: DeleteResult = await this.userRepository.delete({});
+    return await this.userRepository.clear();
 
-    return {
-      message: `${deleteResult.affected ?? 0} users deleted successfully`,
-    };
+    
+  }
+  async deleteUserByCustomerCode(customerCode: string) {
+    try {
+      const deleteResult: DeleteResult = await this.userRepository.delete({
+      customerCode,
+    })
+    if (deleteResult.affected === 0) {
+      throw new NotFoundException(
+        `User with customer code ${customerCode} not found`,
+      );
+    }
+
+  }
+  catch (error) {
+    if (error instanceof NotFoundException) {
+      throw error;
+    }
+  }
   }
   async testingRBAC(){
     return "Only admin can access this endpoint";

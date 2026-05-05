@@ -23,7 +23,7 @@ describe('UserService', () => {
     name: 'Alice',
     email: 'alice@example.com',
     password: 'alice-secret',
-    borrowedBooks: [],
+    borrowRecords: [],
     role: Role.MEMBER,
     ...overrides,
   });
@@ -35,6 +35,7 @@ describe('UserService', () => {
       create: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
+      clear: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -247,21 +248,30 @@ describe('UserService', () => {
   });
 
   describe('deleteAll', () => {
-    it('should delete all users and return the deleted count', async () => {
-      repository.delete!.mockResolvedValue({ affected: 3 } as DeleteResult);
+    it('should clear all users from the repository', async () => {
+      repository.clear!.mockResolvedValue(undefined);
 
-      await expect(service.deleteAll()).resolves.toEqual({
-        message: '3 users deleted successfully',
+      await expect(service.deleteAll()).resolves.toBeUndefined();
+      expect(repository.clear).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteUserByCustomerCode', () => {
+    it('should delete the user when the customer code exists', async () => {
+      repository.delete!.mockResolvedValue({ affected: 1 } as DeleteResult);
+
+      await expect(service.deleteUserByCustomerCode('cus001')).resolves.toBeUndefined();
+      expect(repository.delete).toHaveBeenCalledWith({
+        customerCode: 'cus001',
       });
-      expect(repository.delete).toHaveBeenCalledWith({});
     });
 
-    it('should still return a success message when there are no users to delete', async () => {
+    it('should throw when the customer code does not exist', async () => {
       repository.delete!.mockResolvedValue({ affected: 0 } as DeleteResult);
 
-      await expect(service.deleteAll()).resolves.toEqual({
-        message: '0 users deleted successfully',
-      });
+      await expect(service.deleteUserByCustomerCode('cus999')).rejects.toThrow(
+        new NotFoundException('User with customer code cus999 not found'),
+      );
     });
   });
 

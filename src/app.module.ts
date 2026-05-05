@@ -8,6 +8,7 @@ import { BookModule } from './book/book.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
+import { BorrowModule } from './borrow/borrow.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -30,7 +31,8 @@ import { PassportModule } from '@nestjs/passport';
     }),
     BookModule,
     AuthModule,
-    PassportModule.register({ session: true })
+    PassportModule.register({ session: true }),
+    BorrowModule
   ],
   controllers: [AppController],
   providers: [AppService],

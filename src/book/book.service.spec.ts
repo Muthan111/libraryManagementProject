@@ -2,7 +2,7 @@ jest.mock('../user/user.entity', () => ({
   User: class User {},
 }));
 
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
@@ -11,6 +11,7 @@ import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
 import { User } from '../user/user.entity';
+import { Role } from '../user/user.enum';
 
 describe('BookService', () => {
   let service: BookService;
@@ -24,8 +25,8 @@ describe('BookService', () => {
       name: 'Alice',
       email: 'alice@example.com',
       password: 'secret',
-      borrowedBooks: [],
-      role: 'member',
+      borrowRecords: [],
+      role: Role.MEMBER,
       ...overrides,
     }) as User;
 
@@ -37,8 +38,8 @@ describe('BookService', () => {
       Author: 'Robert C. Martin',
       ISBN: '9780132350884',
       status: 'AVAILABLE',
-      borrowedBy: null,
       borrowedById: null,
+      borrowRecords: [],
       ...overrides,
     }) as Book;
 
@@ -188,113 +189,4 @@ describe('BookService', () => {
     });
   });
 
-  describe('borrowBook', () => {
-    it('should assign the book to a user and mark it as borrowed', async () => {
-      const user = buildUser({ customerCode: 'cus010' });
-      const book = buildBook({ bookCode: 'BK010', status: 'AVAILABLE' });
-      const savedBook = buildBook({
-        bookCode: 'BK010',
-        status: 'BORROWED',
-        borrowedBy: user,
-      });
-
-      userRepository.findOne!.mockResolvedValue(user);
-      bookRepository.findOne!.mockResolvedValue(book);
-      bookRepository.save!.mockResolvedValue(savedBook);
-
-      await expect(service.borrowBook('BK010', 'cus010')).resolves.toEqual(
-        savedBook,
-      );
-      expect(userRepository.findOne).toHaveBeenCalledWith({
-        where: { customerCode: 'cus010' },
-      });
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { bookCode: 'BK010' },
-      });
-      expect(bookRepository.save).toHaveBeenCalledWith({
-        ...book,
-        borrowedBy: user,
-        status: 'BORROWED',
-      });
-    });
-
-    it('should throw when the user does not exist', async () => {
-      userRepository.findOne!.mockResolvedValue(null);
-
-      await expect(service.borrowBook('BK010', 'cus999')).rejects.toThrow(
-        new NotFoundException('User not found'),
-      );
-      expect(bookRepository.findOne).not.toHaveBeenCalled();
-    });
-
-    it('should throw when the book does not exist', async () => {
-      userRepository.findOne!.mockResolvedValue(buildUser());
-      bookRepository.findOne!.mockResolvedValue(null);
-
-      await expect(service.borrowBook('BK999', 'cus001')).rejects.toThrow(
-        new NotFoundException('Book not found'),
-      );
-    });
-
-    it('should throw when the book is already borrowed', async () => {
-      userRepository.findOne!.mockResolvedValue(buildUser());
-      bookRepository.findOne!.mockResolvedValue(
-        buildBook({ borrowedById: 'cus123', status: 'BORROWED' }),
-      );
-
-      await expect(service.borrowBook('BK001', 'cus001')).rejects.toThrow(
-        new BadRequestException('Book is already borrowed'),
-      );
-      expect(bookRepository.save).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('returnBook', () => {
-    it('should clear the borrower and mark the book as available', async () => {
-      const borrowedBook = buildBook({
-        bookCode: 'BK011',
-        status: 'BORROWED',
-        borrowedBy: buildUser(),
-        borrowedById: 'cus001',
-      });
-      const returnedBook = buildBook({
-        bookCode: 'BK011',
-        status: 'AVAILABLE',
-        borrowedBy: null,
-        borrowedById: 'cus001',
-      });
-
-      bookRepository.findOne!.mockResolvedValue(borrowedBook);
-      bookRepository.save!.mockResolvedValue(returnedBook);
-
-      await expect(service.returnBook('BK011')).resolves.toEqual(returnedBook);
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { bookCode: 'BK011' },
-      });
-      expect(bookRepository.save).toHaveBeenCalledWith({
-        ...borrowedBook,
-        borrowedBy: null,
-        status: 'AVAILABLE',
-      });
-    });
-
-    it('should throw when the book does not exist', async () => {
-      bookRepository.findOne!.mockResolvedValue(null);
-
-      await expect(service.returnBook('BK999')).rejects.toThrow(
-        new NotFoundException('Book not found'),
-      );
-    });
-
-    it('should throw when the book is not borrowed', async () => {
-      bookRepository.findOne!.mockResolvedValue(
-        buildBook({ borrowedById: null, status: 'AVAILABLE' }),
-      );
-
-      await expect(service.returnBook('BK001')).rejects.toThrow(
-        new BadRequestException('Book is not borrowed'),
-      );
-      expect(bookRepository.save).not.toHaveBeenCalled();
-    });
-  });
 });

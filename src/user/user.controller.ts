@@ -8,7 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { ApiBody, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
 import { Roles } from '../user/role.decorator';
@@ -70,5 +70,11 @@ export class UserController {
   @Roles(Role.ADMIN)
   testingRBAC() {
     return this.userService.testingRBAC();
+  }
+  @ApiOperation({ summary: 'Delete User by Customer Code' })
+  @ApiParam({ name: 'customerCode', description: 'Customer code of the user to delete' })
+  @Delete('customer-code/:customerCode')
+  deleteUserByCustomerCode(@Param('customerCode') customerCode: string) {
+    return this.userService.deleteUserByCustomerCode(customerCode);
   }
 }

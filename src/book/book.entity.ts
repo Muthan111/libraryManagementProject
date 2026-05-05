@@ -4,9 +4,10 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { User } from '../user/user.entity';
-
+import { BorrowRecord } from '../borrow/borrow.entity';
 @Entity()
 export class Book {
   @PrimaryGeneratedColumn()
@@ -28,15 +29,8 @@ export class Book {
   status: string;
 
   // 👇 Relationship to User via customerCode (cus000)
-  @ManyToOne(() => User, (user) => user.borrowedBooks, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({
-    name: 'borrowedById',
-    referencedColumnName: 'customerCode',
-  })
-  borrowedBy: User | null;
+  @OneToMany(() => BorrowRecord, (borrow) => borrow.book)
+borrowRecords: BorrowRecord[];
 
   // 👇 This column stores cus000 directly in DB
   @Column({ nullable: true })

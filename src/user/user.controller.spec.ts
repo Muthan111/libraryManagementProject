@@ -17,6 +17,7 @@ describe('UserController', () => {
     update: jest.Mock;
     findUserByCustomerCode: jest.Mock;
     deleteAll: jest.Mock;
+    deleteUserByCustomerCode: jest.Mock;
     testingRBAC: jest.Mock;
   };
 
@@ -27,6 +28,7 @@ describe('UserController', () => {
       update: jest.fn(),
       findUserByCustomerCode: jest.fn(),
       deleteAll: jest.fn(),
+      deleteUserByCustomerCode: jest.fn(),
       testingRBAC: jest.fn(),
     };
 
@@ -56,7 +58,7 @@ describe('UserController', () => {
           name: 'Alice',
           email: 'alice@example.com',
           password: 'alice-secret',
-          borrowedBooks: [],
+          borrowRecords: [],
           role: Role.MEMBER,
         },
       ];
@@ -79,7 +81,7 @@ describe('UserController', () => {
       const createdUser = {
         id: 2,
         customerCode: 'cus002',
-        borrowedBooks: [],
+        borrowRecords: [],
         ...dto,
       };
 
@@ -98,7 +100,7 @@ describe('UserController', () => {
         name: 'Charlie',
         email: 'charlie@example.com',
         password: 'charlie-secret',
-        borrowedBooks: [],
+        borrowRecords: [],
         role: Role.MEMBER,
       };
 
@@ -123,7 +125,7 @@ describe('UserController', () => {
         name: 'Updated Name',
         email: 'updated@example.com',
         password: 'diana-secret',
-        borrowedBooks: [],
+        borrowRecords: [],
         role: Role.MEMBER,
       };
 
@@ -136,14 +138,21 @@ describe('UserController', () => {
 
   describe('deleteAllUsers', () => {
     it('should delegate to the service', async () => {
-      const result = {
-        message: '2 users deleted successfully',
-      };
+      service.deleteAll.mockResolvedValue(undefined);
 
-      service.deleteAll.mockResolvedValue(result);
-
-      await expect(controller.deleteAllUsers()).resolves.toEqual(result);
+      await expect(controller.deleteAllUsers()).resolves.toBeUndefined();
       expect(service.deleteAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('deleteUserByCustomerCode', () => {
+    it('should pass the customer code to the service', async () => {
+      service.deleteUserByCustomerCode.mockResolvedValue(undefined);
+
+      await expect(
+        controller.deleteUserByCustomerCode('cus007'),
+      ).resolves.toBeUndefined();
+      expect(service.deleteUserByCustomerCode).toHaveBeenCalledWith('cus007');
     });
   });
 
