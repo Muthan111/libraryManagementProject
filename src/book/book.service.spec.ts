@@ -2,7 +2,7 @@ jest.mock('../user/user.entity', () => ({
   User: class User {},
 }));
 
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
@@ -130,6 +130,28 @@ describe('BookService', () => {
         ...createdBook,
         bookCode: 'BK007',
       });
+    });
+
+    it('should throw when creating a book with an ISBN that already exists', async () => {
+      const bookData: CreateBookDto = {
+        name: 'Domain-Driven Design',
+        Author: 'Eric Evans',
+        ISBN: '9780321125217',
+        status: 'AVAILABLE',
+      };
+      const existingBook = buildBook({
+        bookid: 7,
+        bookCode: 'BK007',
+        ...bookData,
+      });
+
+      bookRepository.findOne!.mockResolvedValue(existingBook);
+
+      await expect(service.create(bookData)).rejects.toThrow(
+        new ConflictException('Book with ISBN 9780321125217 already exists'),
+      );
+      expect(bookRepository.create).not.toHaveBeenCalled();
+      expect(bookRepository.save).not.toHaveBeenCalled();
     });
   });
 

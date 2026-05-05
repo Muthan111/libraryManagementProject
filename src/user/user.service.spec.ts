@@ -2,7 +2,7 @@ jest.mock('src/book/book.entity', () => ({
   Book: class Book {},
 }), { virtual: true });
 
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
@@ -121,6 +121,31 @@ describe('UserService', () => {
         ...createdUserWithoutCode,
         customerCode: 'cus003',
       });
+    });
+
+    it('should throw when creating a user with an email that already exists', async () => {
+      const userData: CreateUserDto = {
+        name: 'Charlie',
+        email: 'charlie@example.com',
+        password: 'charlie-secret',
+        role: Role.MEMBER,
+      };
+      const existingUser = buildUser({
+        id: 3,
+        customerCode: 'cus003',
+        name: 'Charlie',
+        email: 'charlie@example.com',
+      });
+
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
+      repository.findOne!.mockResolvedValue(existingUser);
+
+      await expect(service.create(userData)).rejects.toThrow(
+        new ConflictException('User with email charlie@example.com already exists'),
+      );
+      expect(hashSpy).not.toHaveBeenCalled();
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 
