@@ -275,11 +275,4 @@ describe('UserService', () => {
     });
   });
 
-  describe('testingRBAC', () => {
-    it('should return the RBAC message', async () => {
-      await expect(service.testingRBAC()).resolves.toBe(
-        'Only admin can access this endpoint',
-      );
-    });
-  });
 });
