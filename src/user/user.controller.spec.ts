@@ -18,7 +18,6 @@ describe('UserController', () => {
     findUserByCustomerCode: jest.Mock;
     deleteAll: jest.Mock;
     deleteUserByCustomerCode: jest.Mock;
-    testingRBAC: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -29,7 +28,6 @@ describe('UserController', () => {
       findUserByCustomerCode: jest.fn(),
       deleteAll: jest.fn(),
       deleteUserByCustomerCode: jest.fn(),
-      testingRBAC: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -153,19 +151,6 @@ describe('UserController', () => {
         controller.deleteUserByCustomerCode('cus007'),
       ).resolves.toBeUndefined();
       expect(service.deleteUserByCustomerCode).toHaveBeenCalledWith('cus007');
-    });
-  });
-
-  describe('testingRBAC', () => {
-    it('should delegate to the service', async () => {
-      service.testingRBAC.mockResolvedValue(
-        'Only admin can access this endpoint',
-      );
-
-      await expect(controller.testingRBAC()).resolves.toBe(
-        'Only admin can access this endpoint',
-      );
-      expect(service.testingRBAC).toHaveBeenCalledTimes(1);
     });
   });
 });

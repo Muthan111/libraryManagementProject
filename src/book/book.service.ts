@@ -101,5 +101,40 @@ export class BookService {
 
 //   return await this.bookRepository.save(book);
 // }
-  
+  async findBookByName(name: string) {
+    try {
+      const existingBook = await this.bookRepository.findOne({
+        where: {name},
+
+      })
+      return existingBook;
+    }
+    catch {
+      throw new NotFoundException("Error finding book by name")
+    }
+  }
+
+  async findBookByISBN (ISBN: string) {
+    try {
+      const existingBook = await this.bookRepository.findOne({
+        where: {ISBN}
+      })
+      return existingBook;
+    }
+    catch {
+      throw new NotFoundException("Error finding book by ISBN")
+    }
+  }
+
+  async findBookByAuthor(author: string){
+    try {
+      const existingBook = await this.bookRepository.findOne({
+        where: {Author: author}
+      })
+      return existingBook;
+    }
+    catch {
+      throw new NotFoundException("Error finding book by author")
+    }
+  }
 }

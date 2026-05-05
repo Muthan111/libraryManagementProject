@@ -15,6 +15,9 @@ describe('BookController', () => {
     create: jest.Mock;
     update: jest.Mock;
     delete: jest.Mock;
+    findBookByName: jest.Mock;
+    findBookByISBN: jest.Mock;
+    findBookByAuthor: jest.Mock;
   };
 
   beforeEach(async () => {
@@ -23,6 +26,9 @@ describe('BookController', () => {
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      findBookByName: jest.fn(),
+      findBookByISBN: jest.fn(),
+      findBookByAuthor: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -121,6 +127,74 @@ describe('BookController', () => {
 
       await expect(controller.deleteBook('6')).resolves.toEqual(result);
       expect(service.delete).toHaveBeenCalledWith(6);
+    });
+  });
+
+  describe('findBookByName', () => {
+    it('should delegate the name lookup to the service', async () => {
+      const book = {
+        bookid: 2,
+        bookCode: 'BK002',
+        name: 'Refactoring',
+        Author: 'Martin Fowler',
+        ISBN: '9780201485677',
+        status: 'AVAILABLE',
+        borrowedById: null,
+        borrowRecords: [],
+      };
+
+      service.findBookByName.mockResolvedValue(book);
+
+      await expect(controller.findBookByName('Refactoring')).resolves.toEqual(
+        book,
+      );
+      expect(service.findBookByName).toHaveBeenCalledWith('Refactoring');
+    });
+  });
+
+  describe('findBookByISBN', () => {
+    it('should delegate the ISBN lookup to the service', async () => {
+      const book = {
+        bookid: 5,
+        bookCode: 'BK005',
+        name: 'Patterns of Enterprise Application Architecture',
+        Author: 'Martin Fowler',
+        ISBN: '9780321127426',
+        status: 'AVAILABLE',
+        borrowedById: null,
+        borrowRecords: [],
+      };
+
+      service.findBookByISBN.mockResolvedValue(book);
+
+      await expect(
+        controller.findBookByISBN('9780321127426'),
+      ).resolves.toEqual(book);
+      expect(service.findBookByISBN).toHaveBeenCalledWith('9780321127426');
+    });
+  });
+
+  describe('findBookByAuthor', () => {
+    it('should delegate the author lookup to the service', async () => {
+      const book = {
+        bookid: 9,
+        bookCode: 'BK009',
+        name: 'Clean Architecture',
+        Author: 'Robert C. Martin',
+        ISBN: '9780134494166',
+        status: 'AVAILABLE',
+        borrowedById: null,
+        borrowRecords: [],
+      };
+
+      service.findBookByAuthor.mockResolvedValue(book);
+
+      await expect(
+        controller.findBookByAuthor('Robert C. Martin'),
+      ).resolves.toEqual(book);
+      expect(service.findBookByAuthor).toHaveBeenCalledWith(
+        'Robert C. Martin',
+      );
     });
   });
 });

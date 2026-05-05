@@ -132,7 +132,5 @@ export class UserService {
     }
   }
   }
-  async testingRBAC(){
-    return "Only admin can access this endpoint";
-  }
+
 }

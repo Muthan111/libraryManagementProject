@@ -10,7 +10,7 @@ import {
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
-import { ApiBody, ApiOperation } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
 @Controller('book')
 export class BookController {
   constructor(private readonly bookService: BookService) {}
@@ -85,4 +85,22 @@ export class BookController {
   //   const { bookCode } = body;
   //   return this.bookService.returnBook(bookCode);
   // }
+  @ApiOperation({ summary: 'search books by name' })
+  @ApiParam({name: 'name', type: 'string'})
+  @Get('search/name/:name')
+  async findBookByName(@Param('name') name: string) {
+    return this.bookService.findBookByName(name);
+  }
+  @ApiOperation({ summary: 'search books by isbn' })
+  @ApiParam({name: 'isbn', type: 'string'})
+  @Get('search/isbn/:isbn')
+  async findBookByISBN(@Param('isbn') isbn: string){
+    return this.bookService.findBookByISBN(isbn);
+  }
+  @ApiOperation({ summary: 'search books by author' })
+  @ApiParam({name: 'author', type: 'string'})
+  @Get('search/author/:author')
+  async findBookByAuthor(@Param('author') author:string) {
+    return this.bookService.findBookByAuthor(author);
+  }
 }

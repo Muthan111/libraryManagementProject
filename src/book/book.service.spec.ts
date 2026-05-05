@@ -189,4 +189,48 @@ describe('BookService', () => {
     });
   });
 
+  describe('findBookByName', () => {
+    it('should look up a book by name', async () => {
+      const book = buildBook({ name: 'Refactoring' });
+
+      bookRepository.findOne!.mockResolvedValue(book);
+
+      await expect(service.findBookByName('Refactoring')).resolves.toEqual(
+        book,
+      );
+      expect(bookRepository.findOne).toHaveBeenCalledWith({
+        where: { name: 'Refactoring' },
+      });
+    });
+  });
+
+  describe('findBookByISBN', () => {
+    it('should look up a book by ISBN', async () => {
+      const book = buildBook({ ISBN: '9780321127426' });
+
+      bookRepository.findOne!.mockResolvedValue(book);
+
+      await expect(service.findBookByISBN('9780321127426')).resolves.toEqual(
+        book,
+      );
+      expect(bookRepository.findOne).toHaveBeenCalledWith({
+        where: { ISBN: '9780321127426' },
+      });
+    });
+  });
+
+  describe('findBookByAuthor', () => {
+    it('should look up a book by author', async () => {
+      const book = buildBook({ Author: 'Martin Fowler' });
+
+      bookRepository.findOne!.mockResolvedValue(book);
+
+      await expect(service.findBookByAuthor('Martin Fowler')).resolves.toEqual(
+        book,
+      );
+      expect(bookRepository.findOne).toHaveBeenCalledWith({
+        where: { Author: 'Martin Fowler' },
+      });
+    });
+  });
 });

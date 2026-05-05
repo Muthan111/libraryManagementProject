@@ -66,11 +66,7 @@ export class UserController {
   deleteAllUsers() {
     return this.userService.deleteAll();
   }
-  @Get("TestRBAC")
-  @Roles(Role.ADMIN)
-  testingRBAC() {
-    return this.userService.testingRBAC();
-  }
+  
   @ApiOperation({ summary: 'Delete User by Customer Code' })
   @ApiParam({ name: 'customerCode', description: 'Customer code of the user to delete' })
   @Delete('customer-code/:customerCode')
