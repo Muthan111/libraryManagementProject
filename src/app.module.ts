@@ -9,6 +9,7 @@ import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
 import { BorrowModule } from './borrow/borrow.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { BorrowModule } from './borrow/borrow.module';
     BookModule,
     AuthModule,
     PassportModule.register({ session: true }),
-    BorrowModule
+    BorrowModule,
+    ChatbotModule
   ],
   controllers: [AppController],
   providers: [AppService],
