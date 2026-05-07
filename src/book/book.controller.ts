@@ -10,17 +10,21 @@ import {
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
-import { ApiBody, ApiOperation, ApiParam } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 @Controller('book')
 export class BookController {
+  // Injects book operations used by the book endpoints.
   constructor(private readonly bookService: BookService) {}
   @ApiOperation({ summary: 'Get books' })
+  @ApiResponse({ status: 200, description: 'Books retrieved successfully.' })
   @Get()
+  // Returns the full list of books in the catalog.
   findAllBooks() {
     return this.bookService.findAll();
   }
 
   @Post()
+  @ApiOperation({ summary: 'Create a new book' })
   @ApiBody({
         schema: {
             type: 'object',
@@ -32,11 +36,17 @@ export class BookController {
             },
         },
     })
+  @ApiResponse({ status: 201, description: 'Book created successfully.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 409, description: 'Book with the same ISBN already exists.' })
+  // Creates a new book record from the submitted request body.
   createBook(@Body() data: CreateBookDto) {
     return this.bookService.create(data);
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Update a book' })
+  @ApiParam({ name: 'id', type: 'number' })
   @ApiBody({
         schema: {
             type: 'object',
@@ -48,11 +58,20 @@ export class BookController {
             },
         },
     })
+  @ApiResponse({ status: 200, description: 'Book updated successfully.' })
+  @ApiResponse({ status: 400, description: 'Bad Request.' })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
+  // Updates an existing book by numeric id with the provided changes.
   updateBook(@Param('id') id: string, @Body() data: UpdateBookDto) {
     return this.bookService.update(Number(id), data);
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Delete a book' })
+  @ApiParam({ name: 'id', type: 'number' })
+  @ApiResponse({ status: 200, description: 'Book deleted successfully.' })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
+  // Deletes a book record that matches the supplied numeric id.
   deleteBook(@Param('id') id: string) {
     return this.bookService.delete(Number(id));
   }
@@ -87,19 +106,28 @@ export class BookController {
   // }
   @ApiOperation({ summary: 'search books by name' })
   @ApiParam({name: 'name', type: 'string'})
+  @ApiResponse({ status: 200, description: 'Book lookup by name completed successfully.' })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/name/:name')
+  // Looks up a single book by its exact name.
   async findBookByName(@Param('name') name: string) {
     return this.bookService.findBookByName(name);
   }
   @ApiOperation({ summary: 'search books by isbn' })
   @ApiParam({name: 'isbn', type: 'string'})
+  @ApiResponse({ status: 200, description: 'Book lookup by ISBN completed successfully.' })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/isbn/:isbn')
+  // Looks up a single book by its ISBN value.
   async findBookByISBN(@Param('isbn') isbn: string){
     return this.bookService.findBookByISBN(isbn);
   }
   @ApiOperation({ summary: 'search books by author' })
   @ApiParam({name: 'author', type: 'string'})
+  @ApiResponse({ status: 200, description: 'Book lookup by author completed successfully.' })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/author/:author')
+  // Looks up a single book by the author's name.
   async findBookByAuthor(@Param('author') author:string) {
     return this.bookService.findBookByAuthor(author);
   }

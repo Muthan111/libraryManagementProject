@@ -9,6 +9,7 @@ import { BorrowBookDto } from './borrow-book.dto';
 
 @Injectable()
 export class BorrowService {
+  // Injects repositories required to manage borrow transactions and lookups.
   constructor(
     @InjectRepository(BorrowRecord)
     private borrowRepo: Repository<BorrowRecord>,
@@ -20,6 +21,7 @@ export class BorrowService {
     private bookRepo: Repository<Book>,
   ) {}
 
+  // Creates a borrow transaction after validating the user, book, and availability.
   async borrowBook(dto: BorrowBookDto) {
     const user = await this.userRepo.findOne({
       where: { customerCode: dto.customerCode },
@@ -51,6 +53,7 @@ export class BorrowService {
     return this.borrowRepo.save(borrow);
   }
 
+  // Completes a borrow transaction by marking the record as returned.
   async returnBook(borrowId: number) {
     const borrow = await this.borrowRepo.findOne({
       where: { id: borrowId },
@@ -69,6 +72,7 @@ export class BorrowService {
     return this.borrowRepo.save(borrow);
   }
 
+  // Returns all borrow records associated with a user's customer code.
   async getUserBorrows(userId: string) {
     return this.borrowRepo.find({
       where: { user: { customerCode: userId } },
@@ -77,6 +81,7 @@ export class BorrowService {
     });
   }
 
+  // Returns every borrow record that is still marked as borrowed.
   async getAllActiveBorrows() {
     return this.borrowRepo.find({
       where: { status: BorrowStatus.BORROWED },

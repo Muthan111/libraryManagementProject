@@ -4,6 +4,7 @@ import { BookService } from '../book/book.service';
 @Injectable()
 export class ChatbotService {
   private readonly genAI: GoogleGenerativeAI;
+  // Injects book data access and initializes the Gemini client.
   constructor(
   private readonly bookService: BookService,
   
@@ -11,6 +12,7 @@ export class ChatbotService {
       process.env.GEMINI_API_KEY!,
     );}
 
+  // Handles a chat request and fulfills tool calls when the model asks for book data.
   async handleMessage(message: string) {
 
   const model = this.genAI.getGenerativeModel({

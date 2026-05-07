@@ -8,17 +8,20 @@ import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
+  // Injects the repository used for all user persistence operations.
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
 
+  // Returns every user currently stored in the database.
   findAll() {
     return this.userRepository.find();
     
     
   }
 
+  // Creates a user, prevents duplicate emails, and stores a hashed password.
   async create(userData: CreateUserDto) {
     const existingUser = await this.userRepository.findOne({
         where: { email: userData.email },
@@ -43,13 +46,15 @@ export class UserService {
     
   }
 
-  async update(id: number, userData: UpdateUserDto) {
+  // Updates a user by customer code, hashing a new password when provided.
+  async update(customerCode: string, userData: UpdateUserDto) {
     const existingUser = await this.userRepository.findOne({
-      where: { id },
+      where: { customerCode },
     });
+    console.log("Existing User:", existingUser);
 
     if (!existingUser) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(`User with id ${customerCode} not found`);
     }
 
     const updatePayload = { ...userData };
@@ -63,6 +68,7 @@ export class UserService {
     
   }
 
+  // Finds a user by customer code and throws when no matching user exists.
   async findUserByCustomerCode(customerCode: string) {
     const existingUser = await this.userRepository.findOne({
       where: { customerCode },
@@ -78,6 +84,7 @@ export class UserService {
     
   }
 
+  // Finds a user by email for authentication workflows.
   async findUserByEmail(email: string) {
     const existingUser = await this.userRepository.findOne({
       where: { email },
@@ -92,11 +99,13 @@ export class UserService {
     
   }
 
+  // Deletes every user record from the database.
   async deleteAll() {
     return await this.userRepository.clear();
 
     
   }
+  // Deletes a single user using their customer code.
   async deleteUserByCustomerCode(customerCode: string) {
     const deleteResult: DeleteResult = await this.userRepository.delete({
       customerCode,

@@ -13,6 +13,7 @@ import { User } from '../user/user.entity';
 
 @Injectable()
 export class BookService {
+  // Injects repositories needed to manage books and related user lookups.
   constructor(
     @InjectRepository(Book)
     private bookRepository: Repository<Book>,
@@ -21,11 +22,13 @@ export class BookService {
     private userRepo: Repository<User>,
   ) {}
 
+  // Returns every book currently stored in the database.
   findAll() {
     
     return this.bookRepository.find();
   }
 
+  // Creates a book, enforcing unique ISBN values and generating a book code.
   async create(bookData: CreateBookDto) {
     const existingBook = await this.bookRepository.findOne({
       where: { ISBN: bookData.ISBN },
@@ -44,6 +47,7 @@ export class BookService {
     return this.bookRepository.save(savedBook);
   }
 
+  // Updates an existing book after confirming the target record exists.
   async update(bookid: number, bookData: UpdateBookDto) {
     const existingBook = await this.bookRepository.findOne({
       where: { bookid },
@@ -57,6 +61,7 @@ export class BookService {
     return this.bookRepository.save(existingBook);
   }
 
+  // Deletes a book by id and reports success when the record is removed.
   async delete(bookid: number) {
     const deleteResult = await this.bookRepository.delete({ bookid });
 
@@ -117,6 +122,7 @@ export class BookService {
 
 //   return await this.bookRepository.save(book);
 // }
+  // Finds a book by its exact name and surfaces a lookup error if one occurs.
   async findBookByName(name: string) {
     try {
       const existingBook = await this.bookRepository.findOne({
@@ -130,6 +136,7 @@ export class BookService {
     }
   }
 
+  // Finds a book by ISBN and surfaces a lookup error if one occurs.
   async findBookByISBN (ISBN: string) {
     try {
       const existingBook = await this.bookRepository.findOne({
@@ -142,6 +149,7 @@ export class BookService {
     }
   }
 
+  // Finds a book by author name and surfaces a lookup error if one occurs.
   async findBookByAuthor(author: string){
     try {
       const existingBook = await this.bookRepository.findOne({

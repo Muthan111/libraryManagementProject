@@ -5,11 +5,13 @@ import * as bcrypt from 'bcrypt';
 @Injectable()
 export class AuthService {
 
+    // Injects user lookup and JWT utilities used during authentication.
     constructor(
         private readonly service: UserService,
         private readonly jwtService: JwtService
     ) { }
 
+    // Validates user credentials and returns a sanitized user object on success.
     async validateUser(email: string, password: string): Promise<any> {
         const user = await this.service.findUserByEmail(email);
         console.log('User found for email:', email, user); // Log the user found
@@ -21,6 +23,7 @@ export class AuthService {
         return null;
     }
 
+    // Creates a signed JWT payload for an authenticated user.
     async login(user: any) {
         const payload = {
             
@@ -36,9 +39,11 @@ export class AuthService {
         };
     }
 
+    // Returns a simple success message for authenticated test requests.
     async testingAuthModule(){
         return "Hello You are Successfully Logged In"
     }
+    // Returns a confirmation message for admin-only RBAC checks.
     async testingRBAC(){
     return "Only admin can access this endpoint";
   }
