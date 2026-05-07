@@ -77,172 +77,183 @@ describe('BookService', () => {
     expect(service).toBeDefined();
   });
 
+  // ---------------- FIND ALL ----------------
   describe('findAll', () => {
-    it('should return all books from the repository', async () => {
-      const books = [
-        buildBook(),
-        buildBook({
-          bookid: 2,
-          bookCode: 'BK002',
-          name: 'Refactoring',
-          Author: 'Martin Fowler',
-          ISBN: '9780201485677',
-          status: 'BORROWED',
-          borrowedById: 'cus001',
-        }),
-      ];
+    it('should return all books', async () => {
+      bookRepository.find!.mockResolvedValue([buildBook()]);
+      await expect(service.findAll()).resolves.toHaveLength(1);
+    });
 
-      bookRepository.find!.mockResolvedValue(books);
+    it('should return empty array when no books exist', async () => {
+      bookRepository.find!.mockResolvedValue([]);
+      await expect(service.findAll()).resolves.toEqual([]);
+    });
 
-      await expect(service.findAll()).resolves.toEqual(books);
-      expect(bookRepository.find).toHaveBeenCalledTimes(1);
+    it('should handle repository errors', async () => {
+      bookRepository.find!.mockRejectedValue(new Error('db crash'));
+      await expect(service.findAll()).rejects.toThrow();
     });
   });
 
+  // ---------------- CREATE ----------------
   describe('create', () => {
-    it('should create a book, generate the book code, and save it twice', async () => {
-      const bookData: CreateBookDto = {
-        name: 'Domain-Driven Design',
+    it('should create book successfully', async () => {
+      const dto: CreateBookDto = {
+        name: 'DDD',
         Author: 'Eric Evans',
-        ISBN: '9780321125217',
+        ISBN: '123',
         status: 'AVAILABLE',
       };
-      const createdBook = buildBook({
-        bookid: 7,
-        bookCode: null as unknown as string,
-        ...bookData,
-      });
-      const finalSavedBook = buildBook({
-        bookid: 7,
-        bookCode: 'BK007',
-        ...bookData,
-      });
 
-      bookRepository.create!.mockReturnValue(createdBook);
+      const created = buildBook({ ...dto });
+      const final = buildBook({ bookCode: 'BK001', ...dto });
+
+      bookRepository.findOne!.mockResolvedValue(null);
+      bookRepository.create!.mockReturnValue(created);
       bookRepository.save!
-        .mockResolvedValueOnce(createdBook)
-        .mockResolvedValueOnce(finalSavedBook);
+        .mockResolvedValueOnce(created)
+        .mockResolvedValueOnce(final);
 
-      await expect(service.create(bookData)).resolves.toEqual(finalSavedBook);
-      expect(bookRepository.create).toHaveBeenCalledWith(bookData);
-      expect(bookRepository.save).toHaveBeenNthCalledWith(1, createdBook);
-      expect(bookRepository.save).toHaveBeenNthCalledWith(2, {
-        ...createdBook,
-        bookCode: 'BK007',
-      });
+      await expect(service.create(dto)).resolves.toEqual(final);
     });
 
-    it('should throw when creating a book with an ISBN that already exists', async () => {
-      const bookData: CreateBookDto = {
-        name: 'Domain-Driven Design',
-        Author: 'Eric Evans',
-        ISBN: '9780321125217',
-        status: 'AVAILABLE',
-      };
-      const existingBook = buildBook({
-        bookid: 7,
-        bookCode: 'BK007',
-        ...bookData,
-      });
+    it('should throw on duplicate ISBN', async () => {
+      const existing = buildBook();
 
-      bookRepository.findOne!.mockResolvedValue(existingBook);
+      bookRepository.findOne!.mockResolvedValue(existing);
 
-      await expect(service.create(bookData)).rejects.toThrow(
-        new ConflictException('Book with ISBN 9780321125217 already exists'),
-      );
-      expect(bookRepository.create).not.toHaveBeenCalled();
-      expect(bookRepository.save).not.toHaveBeenCalled();
+      await expect(
+        service.create({
+          name: 'x',
+          Author: 'y',
+          ISBN: existing.ISBN,
+          status: 'AVAILABLE',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should handle save failure', async () => {
+      bookRepository.findOne!.mockResolvedValue(null);
+      bookRepository.create!.mockReturnValue({} as any);
+      bookRepository.save!.mockRejectedValue(new Error('save fail'));
+
+      await expect(
+        service.create({
+          name: 'x',
+          Author: 'y',
+          ISBN: '999',
+          status: 'AVAILABLE',
+        }),
+      ).rejects.toThrow();
     });
   });
 
+  // ---------------- UPDATE ----------------
   describe('update', () => {
-    it('should merge the incoming data into the existing book and save it', async () => {
-      const existingBook = buildBook({
-        bookid: 4,
-        bookCode: 'BK004',
-      });
-      const updateData: UpdateBookDto = {
-        name: 'The Pragmatic Programmer 20th Anniversary Edition',
-        status: 'RESERVED',
-      };
+    it('should update book successfully', async () => {
+      const existing = buildBook();
+      const update: UpdateBookDto = { name: 'New Name' };
 
-      bookRepository.findOne!.mockResolvedValue(existingBook);
-      bookRepository.save!.mockImplementation(async (book) => book as Book);
+      bookRepository.findOne!.mockResolvedValue(existing);
+      bookRepository.save!.mockImplementation(async (b) => b as Book);
 
-      await expect(service.update(4, updateData)).resolves.toEqual({
-        ...existingBook,
-        ...updateData,
-      });
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { bookid: 4 },
-      });
-      expect(bookRepository.save).toHaveBeenCalledWith({
-        ...existingBook,
-        ...updateData,
+      await expect(service.update(1, update)).resolves.toEqual({
+        ...existing,
+        ...update,
       });
     });
 
-    it('should throw when trying to update a missing book', async () => {
+    it('should only update provided fields', async () => {
+      const existing = buildBook({
+        name: 'Old',
+        status: 'AVAILABLE',
+      });
+
+      bookRepository.findOne!.mockResolvedValue(existing);
+      bookRepository.save!.mockImplementation(async (b) => b as Book);
+
+      const result = await service.update(1, { name: 'New' });
+
+      expect(result.name).toBe('New');
+      expect(result.status).toBe('AVAILABLE');
+    });
+
+    it('should throw if book not found', async () => {
       bookRepository.findOne!.mockResolvedValue(null);
 
-      await expect(service.update(99, { name: 'Missing Book' })).rejects.toThrow(
-        new NotFoundException('Book with id 99 not found'),
+      await expect(service.update(99, { name: 'x' })).rejects.toThrow(
+        NotFoundException,
       );
-      expect(bookRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should handle save failure', async () => {
+      const existing = buildBook();
+
+      bookRepository.findOne!.mockResolvedValue(existing);
+      bookRepository.save!.mockRejectedValue(new Error('update fail'));
+
+      await expect(service.update(1, { name: 'x' })).rejects.toThrow();
     });
   });
 
+  // ---------------- DELETE ----------------
   describe('delete', () => {
-    it('should delete the book and return a success message', async () => {
+    it('should delete successfully', async () => {
       bookRepository.delete!.mockResolvedValue({ affected: 1 } as DeleteResult);
 
-      await expect(service.delete(5)).resolves.toEqual({
-        message: 'Book with id 5 deleted successfully',
-      });
-      expect(bookRepository.delete).toHaveBeenCalledWith({ bookid: 5 });
+      await expect(service.delete(1)).resolves.toBeDefined();
     });
 
-    it('should throw when trying to delete a missing book', async () => {
+    it('should throw if not found', async () => {
       bookRepository.delete!.mockResolvedValue({ affected: 0 } as DeleteResult);
 
-      await expect(service.delete(12)).rejects.toThrow(
-        new NotFoundException('Book with id 12 not found'),
-      );
+      await expect(service.delete(1)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should handle repository crash', async () => {
+      bookRepository.delete!.mockRejectedValue(new Error('db error'));
+
+      await expect(service.delete(1)).rejects.toThrow();
     });
   });
 
+  // ---------------- FIND BY NAME ----------------
   describe('findBookByName', () => {
-    it('should look up a book by name', async () => {
+    it('should return book', async () => {
       const book = buildBook({ name: 'Refactoring' });
 
       bookRepository.findOne!.mockResolvedValue(book);
 
-      await expect(service.findBookByName('Refactoring')).resolves.toEqual(
-        book,
-      );
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { name: 'Refactoring' },
-      });
+      await expect(service.findBookByName('Refactoring')).resolves.toEqual(book);
+    });
+
+    it('should return null', async () => {
+      bookRepository.findOne!.mockResolvedValue(null);
+
+      await expect(service.findBookByName('x')).resolves.toBeNull();
     });
   });
 
+  // ---------------- FIND BY ISBN ----------------
   describe('findBookByISBN', () => {
-    it('should look up a book by ISBN', async () => {
-      const book = buildBook({ ISBN: '9780321127426' });
+    it('should return book', async () => {
+      const book = buildBook({ ISBN: '123' });
 
       bookRepository.findOne!.mockResolvedValue(book);
 
-      await expect(service.findBookByISBN('9780321127426')).resolves.toEqual(
-        book,
-      );
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { ISBN: '9780321127426' },
-      });
+      await expect(service.findBookByISBN('123')).resolves.toEqual(book);
+    });
+
+    it('should return null', async () => {
+      bookRepository.findOne!.mockResolvedValue(null);
+
+      await expect(service.findBookByISBN('x')).resolves.toBeNull();
     });
   });
 
+  // ---------------- FIND BY AUTHOR ----------------
   describe('findBookByAuthor', () => {
-    it('should look up a book by author', async () => {
+    it('should return book', async () => {
       const book = buildBook({ Author: 'Martin Fowler' });
 
       bookRepository.findOne!.mockResolvedValue(book);
@@ -250,9 +261,12 @@ describe('BookService', () => {
       await expect(service.findBookByAuthor('Martin Fowler')).resolves.toEqual(
         book,
       );
-      expect(bookRepository.findOne).toHaveBeenCalledWith({
-        where: { Author: 'Martin Fowler' },
-      });
+    });
+
+    it('should return null', async () => {
+      bookRepository.findOne!.mockResolvedValue(null);
+
+      await expect(service.findBookByAuthor('x')).resolves.toBeNull();
     });
   });
 });

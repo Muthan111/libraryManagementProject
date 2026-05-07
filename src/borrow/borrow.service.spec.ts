@@ -186,6 +186,32 @@ describe('BorrowService', () => {
       expect(borrowRepository.create).not.toHaveBeenCalled();
       expect(borrowRepository.save).not.toHaveBeenCalled();
     });
+
+    it('should preserve the exact due date provided in the dto', async () => {
+      const dto: BorrowBookDto = {
+        customerCode: 'cus001' as never,
+        bookCode: 'BK001' as never,
+        dueDate: '2026-05-15T18:30:00.000Z',
+      };
+
+      userRepository.findOne!.mockResolvedValue(buildUser());
+      bookRepository.findOne!.mockResolvedValue(buildBook());
+      borrowRepository.findOne!.mockResolvedValue(null);
+      borrowRepository.create!.mockImplementation(
+        (payload) => payload as BorrowRecord,
+      );
+      borrowRepository.save!.mockImplementation(
+        async (record) => record as BorrowRecord,
+      );
+
+      await service.borrowBook(dto);
+
+      expect(borrowRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dueDate: new Date('2026-05-15T18:30:00.000Z'),
+        }),
+      );
+    });
   });
 
   describe('returnBook', () => {
@@ -253,6 +279,12 @@ describe('BorrowService', () => {
         relations: ['book'],
         order: { borrowDate: 'DESC' },
       });
+    });
+
+    it('should return an empty array when the user has no borrow history', async () => {
+      borrowRepository.find!.mockResolvedValue([]);
+
+      await expect(service.getUserBorrows('cus404')).resolves.toEqual([]);
     });
   });
 

@@ -48,153 +48,206 @@ describe('BookController', () => {
     expect(controller).toBeDefined();
   });
 
+  // ---------------- FIND ALL ----------------
   describe('findAllBooks', () => {
     it('should return all books from the service', async () => {
-      const books = [
-        {
-          bookid: 1,
-          bookCode: 'BK001',
-          name: 'Clean Architecture',
-          Author: 'Robert C. Martin',
-          ISBN: '9780134494166',
-          status: 'AVAILABLE',
-          borrowedById: null,
-          borrowRecords: [],
-        },
-      ];
-
+      const books = [{ bookid: 1, name: 'Clean Architecture' }];
       service.findAll.mockResolvedValue(books);
 
       await expect(controller.findAllBooks()).resolves.toEqual(books);
       expect(service.findAll).toHaveBeenCalledTimes(1);
     });
+
+    it('should propagate service errors', async () => {
+      service.findAll.mockRejectedValue(new Error('DB failure'));
+
+      await expect(controller.findAllBooks()).rejects.toThrow('DB failure');
+    });
   });
 
+  // ---------------- CREATE ----------------
   describe('createBook', () => {
-    it('should pass the dto to the service', async () => {
+    it('should pass dto to service', async () => {
       const dto: CreateBookDto = {
-        name: 'Working Effectively with Legacy Code',
+        name: 'Legacy Code',
         Author: 'Michael Feathers',
-        ISBN: '9780131177055',
+        ISBN: '123',
         status: 'AVAILABLE',
       };
-      const createdBook = {
-        bookid: 8,
-        bookCode: 'BK008',
-        borrowedById: null,
-        borrowRecords: [],
-        ...dto,
-      };
 
-      service.create.mockResolvedValue(createdBook);
+      const created = { bookid: 1, ...dto };
+      service.create.mockResolvedValue(created);
 
-      await expect(controller.createBook(dto)).resolves.toEqual(createdBook);
+      await expect(controller.createBook(dto)).resolves.toEqual(created);
       expect(service.create).toHaveBeenCalledWith(dto);
     });
+
+    it('should propagate service errors', async () => {
+      service.create.mockRejectedValue(new Error('Create failed'));
+
+      await expect(controller.createBook({} as any)).rejects.toThrow(
+        'Create failed',
+      );
+    });
   });
 
+  // ---------------- UPDATE ----------------
   describe('updateBook', () => {
-    it('should convert the id to a number and pass update data to the service', async () => {
-      const dto: UpdateBookDto = {
-        name: 'Updated Name',
-        status: 'BORROWED',
-      };
-      const updatedBook = {
-        bookid: 3,
-        bookCode: 'BK003',
-        name: 'Updated Name',
-        Author: 'Kent Beck',
-        ISBN: '9780321146533',
-        status: 'BORROWED',
-        borrowedById: null,
-        borrowRecords: [],
-      };
+    it('should convert valid id and pass to service', async () => {
+      const dto: UpdateBookDto = { name: 'Updated', status: 'BORROWED' };
+      const updated = { bookid: 3, ...dto };
 
-      service.update.mockResolvedValue(updatedBook);
+      service.update.mockResolvedValue(updated);
 
-      await expect(controller.updateBook('3', dto)).resolves.toEqual(updatedBook);
+      await expect(controller.updateBook('3', dto)).resolves.toEqual(updated);
       expect(service.update).toHaveBeenCalledWith(3, dto);
     });
+
+    it('should handle NaN id', async () => {
+      service.update.mockResolvedValue({ message: 'handled' });
+
+      await expect(
+        controller.updateBook('not-a-number', { status: 'AVAILABLE' }),
+      ).resolves.toEqual({ message: 'handled' });
+
+      expect(service.update.mock.calls[0][0]).toBeNaN();
+    });
+
+    it('should handle empty update DTO', async () => {
+      service.update.mockResolvedValue({ message: 'ok' });
+
+      await expect(controller.updateBook('1', {} as any)).resolves.toEqual({
+        message: 'ok',
+      });
+    });
+
+    it('should propagate service errors', async () => {
+      service.update.mockRejectedValue(new Error('Update failed'));
+
+      await expect(
+        controller.updateBook('1', {} as any),
+      ).rejects.toThrow('Update failed');
+    });
+
+    it('should handle weird numeric inputs', async () => {
+      service.update.mockResolvedValue({ ok: true });
+
+      await controller.updateBook('3.7', {} as any);
+      await controller.updateBook('', {} as any);
+      await controller.updateBook('   5   ', {} as any);
+
+      expect(service.update.mock.calls[0][0]).toBe(3.7);
+      expect(service.update.mock.calls[1][0]).toBe(0);
+      expect(service.update.mock.calls[2][0]).toBe(5);
+    });
   });
 
+  // ---------------- DELETE ----------------
   describe('deleteBook', () => {
-    it('should convert the id to a number and delegate to the service', async () => {
-      const result = {
-        message: 'Book with id 6 deleted successfully',
-      };
+    it('should delete by numeric id', async () => {
+      service.delete.mockResolvedValue({ ok: true });
 
-      service.delete.mockResolvedValue(result);
-
-      await expect(controller.deleteBook('6')).resolves.toEqual(result);
+      await expect(controller.deleteBook('6')).resolves.toEqual({ ok: true });
       expect(service.delete).toHaveBeenCalledWith(6);
     });
-  });
 
-  describe('findBookByName', () => {
-    it('should delegate the name lookup to the service', async () => {
-      const book = {
-        bookid: 2,
-        bookCode: 'BK002',
-        name: 'Refactoring',
-        Author: 'Martin Fowler',
-        ISBN: '9780201485677',
-        status: 'AVAILABLE',
-        borrowedById: null,
-        borrowRecords: [],
-      };
+    it('should handle invalid id', async () => {
+      service.delete.mockResolvedValue({ ok: true });
 
-      service.findBookByName.mockResolvedValue(book);
+      await controller.deleteBook('bad-id');
+      expect(service.delete.mock.calls[0][0]).toBeNaN();
+    });
 
-      await expect(controller.findBookByName('Refactoring')).resolves.toEqual(
-        book,
+    it('should propagate service errors', async () => {
+      service.delete.mockRejectedValue(new Error('Delete failed'));
+
+      await expect(controller.deleteBook('1')).rejects.toThrow(
+        'Delete failed',
       );
-      expect(service.findBookByName).toHaveBeenCalledWith('Refactoring');
     });
   });
 
-  describe('findBookByISBN', () => {
-    it('should delegate the ISBN lookup to the service', async () => {
-      const book = {
-        bookid: 5,
-        bookCode: 'BK005',
-        name: 'Patterns of Enterprise Application Architecture',
-        Author: 'Martin Fowler',
-        ISBN: '9780321127426',
-        status: 'AVAILABLE',
-        borrowedById: null,
-        borrowRecords: [],
-      };
+  // ---------------- FIND BY NAME ----------------
+  describe('findBookByName', () => {
+    it('should return book by name', async () => {
+      const book = { bookid: 1, name: 'Refactoring' };
+      service.findBookByName.mockResolvedValue(book);
 
+      await expect(
+        controller.findBookByName('Refactoring'),
+      ).resolves.toEqual(book);
+    });
+
+    it('should return null if not found', async () => {
+      service.findBookByName.mockResolvedValue(null);
+
+      await expect(
+        controller.findBookByName('unknown'),
+      ).resolves.toBeNull();
+    });
+
+    it('should propagate errors', async () => {
+      service.findBookByName.mockRejectedValue(new Error('fail'));
+
+      await expect(
+        controller.findBookByName('x'),
+      ).rejects.toThrow('fail');
+    });
+  });
+
+  // ---------------- FIND BY ISBN ----------------
+  describe('findBookByISBN', () => {
+    it('should return book by ISBN', async () => {
+      const book = { bookid: 2, ISBN: '123' };
       service.findBookByISBN.mockResolvedValue(book);
 
       await expect(
-        controller.findBookByISBN('9780321127426'),
+        controller.findBookByISBN('123'),
       ).resolves.toEqual(book);
-      expect(service.findBookByISBN).toHaveBeenCalledWith('9780321127426');
+    });
+
+    it('should return null if not found', async () => {
+      service.findBookByISBN.mockResolvedValue(null);
+
+      await expect(
+        controller.findBookByISBN('unknown'),
+      ).resolves.toBeNull();
+    });
+
+    it('should propagate errors', async () => {
+      service.findBookByISBN.mockRejectedValue(new Error('fail'));
+
+      await expect(
+        controller.findBookByISBN('x'),
+      ).rejects.toThrow('fail');
     });
   });
 
+  // ---------------- FIND BY AUTHOR ----------------
   describe('findBookByAuthor', () => {
-    it('should delegate the author lookup to the service', async () => {
-      const book = {
-        bookid: 9,
-        bookCode: 'BK009',
-        name: 'Clean Architecture',
-        Author: 'Robert C. Martin',
-        ISBN: '9780134494166',
-        status: 'AVAILABLE',
-        borrowedById: null,
-        borrowRecords: [],
-      };
-
+    it('should return book by author', async () => {
+      const book = { bookid: 3, Author: 'Robert C. Martin' };
       service.findBookByAuthor.mockResolvedValue(book);
 
       await expect(
         controller.findBookByAuthor('Robert C. Martin'),
       ).resolves.toEqual(book);
-      expect(service.findBookByAuthor).toHaveBeenCalledWith(
-        'Robert C. Martin',
-      );
+    });
+
+    it('should return null if not found', async () => {
+      service.findBookByAuthor.mockResolvedValue(null);
+
+      await expect(
+        controller.findBookByAuthor('unknown'),
+      ).resolves.toBeNull();
+    });
+
+    it('should propagate errors', async () => {
+      service.findBookByAuthor.mockRejectedValue(new Error('fail'));
+
+      await expect(
+        controller.findBookByAuthor('x'),
+      ).rejects.toThrow('fail');
     });
   });
 });

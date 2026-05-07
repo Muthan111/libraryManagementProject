@@ -15,12 +15,16 @@ export class AuthService {
     async validateUser(email: string, password: string): Promise<any> {
         const user = await this.service.findUserByEmail(email);
         console.log('User found for email:', email, user); // Log the user found
+        if (!user || !user.password) {
+            return null;
+        };
         if (user && await bcrypt.compare(password, user.password)) {
             const { password, ...result } = user;
             console.log('Validated User:', result); // Log the validated user
             return result;
         }
         return null;
+        
     }
 
     // Creates a signed JWT payload for an authenticated user.

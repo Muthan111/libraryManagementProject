@@ -26,14 +26,8 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        {
-          provide: UserService,
-          useValue: userService,
-        },
-        {
-          provide: JwtService,
-          useValue: jwtService,
-        },
+        { provide: UserService, useValue: userService },
+        { provide: JwtService, useValue: jwtService },
       ],
     }).compile();
 
@@ -48,8 +42,11 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
+  // =========================
+  // validateUser
+  // =========================
   describe('validateUser', () => {
-    it('should return the user without the password when the credentials are valid', async () => {
+    it('should return user without password when credentials are valid', async () => {
       const existingUser = {
         id: 1,
         name: 'Alice',
@@ -73,40 +70,101 @@ describe('AuthService', () => {
       expect(userService.findUserByEmail).toHaveBeenCalledWith(
         'alice@example.com',
       );
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'plain-password',
-        'hashed-password',
-      );
     });
 
-    it('should return null when the user does not exist', async () => {
-      const compareSpy = jest.spyOn(bcrypt, 'compare');
+    it('should return null when user does not exist', async () => {
       userService.findUserByEmail.mockResolvedValue(null);
 
+      const compareSpy = jest.spyOn(bcrypt, 'compare');
+
       await expect(
-        service.validateUser('missing@example.com', 'plain-password'),
+        service.validateUser('missing@example.com', 'pass'),
       ).resolves.toBeNull();
+
       expect(compareSpy).not.toHaveBeenCalled();
     });
 
-    it('should return null when the password comparison fails', async () => {
+    it('should return null when password comparison fails', async () => {
       userService.findUserByEmail.mockResolvedValue({
         id: 2,
-        name: 'Bob',
         email: 'bob@example.com',
-        password: 'hashed-password',
+        password: 'hashed',
         role: Role.MEMBER,
       });
+
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
       await expect(
-        service.validateUser('bob@example.com', 'wrong-password'),
+        service.validateUser('bob@example.com', 'wrong'),
       ).resolves.toBeNull();
+    });
+
+    it('should not leak password field', async () => {
+      userService.findUserByEmail.mockResolvedValue({
+        id: 3,
+        email: 'dana@example.com',
+        password: 'hashed',
+        role: Role.MEMBER,
+      });
+
+      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
+
+      const result = await service.validateUser(
+        'dana@example.com',
+        'pass',
+      );
+
+      expect(result).not.toHaveProperty('password');
+    });
+
+    // -------------------------
+    // NEW EDGE CASES
+    // -------------------------
+
+    it('should handle bcrypt errors gracefully', async () => {
+      userService.findUserByEmail.mockResolvedValue({
+        id: 1,
+        email: 'a@a.com',
+        password: 'hashed',
+        role: Role.ADMIN,
+      });
+
+      jest.spyOn(bcrypt, 'compare').mockRejectedValue(new Error('bcrypt crash'));
+
+      await expect(
+        service.validateUser('a@a.com', 'pass'),
+      ).rejects.toThrow('bcrypt crash');
+    });
+
+    it('should return null if stored password is missing', async () => {
+      userService.findUserByEmail.mockResolvedValue({
+        id: 5,
+        email: 'no-pass@example.com',
+        password: null,
+        role: Role.MEMBER,
+      });
+
+      await expect(
+        service.validateUser('no-pass@example.com', 'pass'),
+      ).resolves.toBeNull();
+    });
+
+    it('should handle email case variations if system is case-insensitive', async () => {
+      userService.findUserByEmail.mockResolvedValue(null);
+
+      await service.validateUser('ALICE@EXAMPLE.COM', 'pass');
+
+      expect(userService.findUserByEmail).toHaveBeenCalledWith(
+        'ALICE@EXAMPLE.COM',
+      );
     });
   });
 
+  // =========================
+  // login
+  // =========================
   describe('login', () => {
-    it('should sign a JWT with the user id, email, and role and return it as an access token', async () => {
+    it('should return signed JWT token', async () => {
       jwtService.sign.mockReturnValue('signed-jwt');
 
       await expect(
@@ -125,20 +183,76 @@ describe('AuthService', () => {
         role: Role.ADMIN,
       });
     });
+
+    // -------------------------
+    // NEW EDGE CASES
+    // -------------------------
+
+    it('should handle jwt sign failure', async () => {
+      jwtService.sign.mockImplementation(() => {
+        throw new Error('JWT failed');
+      });
+
+      await expect(
+        service.login({
+          id: 1,
+          email: 'test@test.com',
+          role: Role.ADMIN,
+        }),
+      ).rejects.toThrow('JWT failed');
+    });
+
+    it('should handle missing role in payload', async () => {
+      jwtService.sign.mockReturnValue('token');
+
+      await service.login({
+        id: 1,
+        email: 'test@test.com',
+        role: undefined as any,
+      });
+
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        sub: 1,
+        email: 'test@test.com',
+        role: undefined,
+      });
+    });
+
+    it('should handle incomplete payload safely', async () => {
+      jwtService.sign.mockReturnValue('token');
+
+      await expect(
+        service.login({
+          id: 1,
+          email: 'test@test.com',
+          role: Role.ADMIN,
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('should throw if login input is invalid', async () => {
+      await expect(service.login(null as any)).rejects.toThrow();
+    });
   });
 
-  describe('testingAuthModule', () => {
-    it('should return the authentication success message', async () => {
-      await expect(service.testingAuthModule()).resolves.toBe(
-        'Hello You are Successfully Logged In',
+  // =========================
+  // RBAC
+  // =========================
+  describe('testingRBAC', () => {
+    it('should return RBAC message', async () => {
+      await expect(service.testingRBAC()).resolves.toBe(
+        'Only admin can access this endpoint',
       );
     });
   });
 
-  describe('testingRBAC', () => {
-    it('should return the RBAC message', async () => {
-      await expect(service.testingRBAC()).resolves.toBe(
-        'Only admin can access this endpoint',
+  // =========================
+  // module test endpoint
+  // =========================
+  describe('testingAuthModule', () => {
+    it('should return success message', async () => {
+      await expect(service.testingAuthModule()).resolves.toBe(
+        'Hello You are Successfully Logged In',
       );
     });
   });

@@ -39,4 +39,15 @@ describe('ChatbotController', () => {
 
     expect(chatbotService.handleMessage).toHaveBeenCalledWith('hello');
   });
+
+  it('forwards an empty message string unchanged', async () => {
+    chatbotService.handleMessage.mockResolvedValue({
+      reply: 'Please ask a question.',
+    });
+
+    await expect(controller.chat({ message: '' })).resolves.toEqual({
+      reply: 'Please ask a question.',
+    });
+    expect(chatbotService.handleMessage).toHaveBeenCalledWith('');
+  });
 });

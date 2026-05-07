@@ -118,4 +118,36 @@ describe('ChatbotService', () => {
       ]),
     );
   });
+
+  it('falls back to the model text when a different tool call is requested', async () => {
+    const sendMessage = jest.fn().mockResolvedValue({
+      response: {
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  functionCall: {
+                    name: 'unsupportedTool',
+                  },
+                },
+              ],
+            },
+          },
+        ],
+        text: jest.fn().mockReturnValue('Fallback reply'),
+      },
+    });
+
+    jest.spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel').mockReturnValue({
+      startChat: jest.fn().mockReturnValue({
+        sendMessage,
+      }),
+    } as never);
+
+    await expect(service.handleMessage('do something else')).resolves.toEqual({
+      reply: 'Fallback reply',
+    });
+    expect(bookService.findAll).not.toHaveBeenCalled();
+  });
 });

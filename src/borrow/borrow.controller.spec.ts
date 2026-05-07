@@ -73,6 +73,15 @@ describe('BorrowController', () => {
       );
       expect(service.returnBook).toHaveBeenCalledWith(4);
     });
+
+    it('should pass NaN through when the return id is invalid', async () => {
+      service.returnBook.mockResolvedValue({ id: NaN });
+
+      await expect(controller.returnBook('oops' as never)).resolves.toEqual({
+        id: NaN,
+      });
+      expect(service.returnBook.mock.calls[0][0]).toBeNaN();
+    });
   });
 
   describe('getUserBorrows', () => {
