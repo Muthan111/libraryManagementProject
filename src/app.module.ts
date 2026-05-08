@@ -40,17 +40,18 @@ import { APP_GUARD } from '@nestjs/core';
     ChatbotModule,
     ThrottlerModule.forRoot([
       {
-        ttl: 60,   // time window in seconds
+        ttl: 60, // time window in seconds
         limit: 10, // max requests per window
       },
     ]),
   ],
   controllers: [AppController],
-  providers: [AppService,
+  providers: [
+    AppService,
     {
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard,
-  },
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule implements NestModule {

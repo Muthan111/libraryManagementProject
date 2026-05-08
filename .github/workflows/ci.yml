@@ -21,9 +21,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint code
+        run: npm run lint
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
@@ -33,3 +37,9 @@ jobs:
 
       - name: Build project
         run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
