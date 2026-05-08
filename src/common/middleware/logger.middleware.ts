@@ -33,9 +33,9 @@ export class LoggerMiddleware implements NestMiddleware {
       this.logger.log(
         [
           `${method} ${originalUrl} ${res.statusCode}`,
-          `⏱ ${durationMs.toFixed(2)}ms`,
-          `🧠 ΔMemory ${memoryDiff.toFixed(2)}MB`,
-          `🔥 CPU user ${cpuUserMs.toFixed(2)}ms system ${cpuSystemMs.toFixed(2)}ms`,
+          `${durationMs.toFixed(2)}ms`,
+          `memory ${memoryDiff.toFixed(2)}MB`,
+          `CPU user ${cpuUserMs.toFixed(2)}ms system ${cpuSystemMs.toFixed(2)}ms`,
         ].join(' | '),
       );
     });
