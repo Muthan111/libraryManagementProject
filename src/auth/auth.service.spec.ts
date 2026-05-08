@@ -109,10 +109,7 @@ describe('AuthService', () => {
 
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
 
-      const result = await service.validateUser(
-        'dana@example.com',
-        'pass',
-      );
+      const result = await service.validateUser('dana@example.com', 'pass');
 
       expect(result).not.toHaveProperty('password');
     });
@@ -129,11 +126,13 @@ describe('AuthService', () => {
         role: Role.ADMIN,
       });
 
-      jest.spyOn(bcrypt, 'compare').mockRejectedValue(new Error('bcrypt crash'));
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockRejectedValue(new Error('bcrypt crash'));
 
-      await expect(
-        service.validateUser('a@a.com', 'pass'),
-      ).rejects.toThrow('bcrypt crash');
+      await expect(service.validateUser('a@a.com', 'pass')).rejects.toThrow(
+        'bcrypt crash',
+      );
     });
 
     it('should return null if stored password is missing', async () => {

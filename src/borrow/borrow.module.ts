@@ -8,6 +8,6 @@ import { BorrowRecord } from './borrow.entity';
 @Module({
   imports: [TypeOrmModule.forFeature([BorrowRecord, User, Book])],
   providers: [BorrowService],
-  controllers: [BorrowController]
+  controllers: [BorrowController],
 })
 export class BorrowModule {}

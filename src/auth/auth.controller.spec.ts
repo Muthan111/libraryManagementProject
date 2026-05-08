@@ -1,6 +1,10 @@
-jest.mock('src/book/book.entity', () => ({
-  Book: class Book {},
-}), { virtual: true });
+jest.mock(
+  'src/book/book.entity',
+  () => ({
+    Book: class Book {},
+  }),
+  { virtual: true },
+);
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
@@ -108,13 +112,13 @@ describe('AuthController', () => {
     });
 
     it('should pass undefined user if request.user is missing', () => {
-  authService.login.mockReturnValue({ access_token: 'token' });
+      authService.login.mockReturnValue({ access_token: 'token' });
 
-  const result = controller.login({} as any);
+      const result = controller.login({} as any);
 
-  expect(authService.login).toHaveBeenCalledWith(undefined);
-  expect(result).toEqual({ access_token: 'token' });
-});
+      expect(authService.login).toHaveBeenCalledWith(undefined);
+      expect(result).toEqual({ access_token: 'token' });
+    });
 
     it('should propagate sync errors from AuthService.login', () => {
       const request = {
@@ -158,9 +162,7 @@ describe('AuthController', () => {
     });
 
     it('should propagate errors from AuthService.testingAuthModule', async () => {
-      authService.testingAuthModule.mockRejectedValue(
-        new Error('auth failed'),
-      );
+      authService.testingAuthModule.mockRejectedValue(new Error('auth failed'));
 
       await expect(controller.testAuthentication()).rejects.toThrow(
         'auth failed',
@@ -185,9 +187,7 @@ describe('AuthController', () => {
     });
 
     it('should propagate RBAC denial errors', async () => {
-      authService.testingRBAC.mockRejectedValue(
-        new Error('Forbidden'),
-      );
+      authService.testingRBAC.mockRejectedValue(new Error('Forbidden'));
 
       await expect(controller.testingRBAC()).rejects.toThrow('Forbidden');
     });

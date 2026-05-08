@@ -6,6 +6,6 @@ import { BookModule } from 'src/book/book.module';
 @Module({
   imports: [BookModule],
   providers: [ChatbotService],
-  controllers: [ChatbotController]
+  controllers: [ChatbotController],
 })
 export class ChatbotModule {}

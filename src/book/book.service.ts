@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  BadRequestException,
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,7 +23,6 @@ export class BookService {
 
   // Returns every book currently stored in the database.
   findAll() {
-    
     return this.bookRepository.find();
   }
 
@@ -104,61 +102,57 @@ export class BookService {
   //   // 5. Save
   //   return await this.bookRepository.save(book);
   // }
-//   async returnBook(bookCode: string) {
-//   const book = await this.bookRepository.findOne({
-//     where: { bookCode },
-//   });
+  //   async returnBook(bookCode: string) {
+  //   const book = await this.bookRepository.findOne({
+  //     where: { bookCode },
+  //   });
 
-//   if (!book) {
-//     throw new NotFoundException('Book not found');
-//   }
+  //   if (!book) {
+  //     throw new NotFoundException('Book not found');
+  //   }
 
-//   if (!book.borrowedById) {
-//     throw new BadRequestException('Book is not borrowed');
-//   }
+  //   if (!book.borrowedById) {
+  //     throw new BadRequestException('Book is not borrowed');
+  //   }
 
-//   book.borrowedBy = null;
-//   book.status = 'AVAILABLE';
+  //   book.borrowedBy = null;
+  //   book.status = 'AVAILABLE';
 
-//   return await this.bookRepository.save(book);
-// }
+  //   return await this.bookRepository.save(book);
+  // }
   // Finds a book by its exact name and surfaces a lookup error if one occurs.
   async findBookByName(name: string) {
     try {
       const existingBook = await this.bookRepository.findOne({
-        where: {name},
-
-      })
+        where: { name },
+      });
       return existingBook;
-    }
-    catch {
-      throw new NotFoundException("Error finding book by name")
+    } catch {
+      throw new NotFoundException('Error finding book by name');
     }
   }
 
   // Finds a book by ISBN and surfaces a lookup error if one occurs.
-  async findBookByISBN (ISBN: string) {
+  async findBookByISBN(ISBN: string) {
     try {
       const existingBook = await this.bookRepository.findOne({
-        where: {ISBN}
-      })
+        where: { ISBN },
+      });
       return existingBook;
-    }
-    catch {
-      throw new NotFoundException("Error finding book by ISBN")
+    } catch {
+      throw new NotFoundException('Error finding book by ISBN');
     }
   }
 
   // Finds a book by author name and surfaces a lookup error if one occurs.
-  async findBookByAuthor(author: string){
+  async findBookByAuthor(author: string) {
     try {
       const existingBook = await this.bookRepository.findOne({
-        where: {Author: author}
-      })
+        where: { Author: author },
+      });
       return existingBook;
-    }
-    catch {
-      throw new NotFoundException("Error finding book by author")
+    } catch {
+      throw new NotFoundException('Error finding book by author');
     }
   }
 }

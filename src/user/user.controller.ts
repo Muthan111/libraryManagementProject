@@ -8,12 +8,9 @@ import {
   Post,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { ApiBody, ApiOperation, ApiParam,ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
-import { Roles } from '../user/role.decorator';
-import { RolesGuard } from '../user/role.guard';
-import { Role } from '../user/user.enum';
 
 @Controller('user')
 export class UserController {
@@ -43,7 +40,10 @@ export class UserController {
   })
   @ApiResponse({ status: 201, description: 'User created successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @ApiResponse({ status: 409, description: 'User with the same email already exists.' })
+  @ApiResponse({
+    status: 409,
+    description: 'User with the same email already exists.',
+  })
   // Creates a new user from the submitted registration data.
   @Post()
   createUser(@Body() data: CreateUserDto) {
@@ -51,7 +51,10 @@ export class UserController {
   }
 
   @ApiOperation({ summary: 'Find user by customer code' })
-  @ApiParam({ name: 'customerCode', description: 'Customer code of the user to retrieve' })
+  @ApiParam({
+    name: 'customerCode',
+    description: 'Customer code of the user to retrieve',
+  })
   @ApiResponse({ status: 200, description: 'User retrieved successfully.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   @Get('customer-code/:customerCode')
@@ -60,9 +63,11 @@ export class UserController {
     return this.userService.findUserByCustomerCode(customerCode);
   }
 
-  
   @ApiOperation({ summary: 'Update user by customer code' })
-  @ApiParam({ name: 'cusCode', description: 'Customer code of the user to update' })
+  @ApiParam({
+    name: 'cusCode',
+    description: 'Customer code of the user to update',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -88,9 +93,12 @@ export class UserController {
   deleteAllUsers() {
     return this.userService.deleteAll();
   }
-  
+
   @ApiOperation({ summary: 'Delete User by Customer Code' })
-  @ApiParam({ name: 'customerCode', description: 'Customer code of the user to delete' })
+  @ApiParam({
+    name: 'customerCode',
+    description: 'Customer code of the user to delete',
+  })
   @ApiResponse({ status: 200, description: 'User deleted successfully.' })
   @ApiResponse({ status: 404, description: 'User not found.' })
   @Delete('customer-code/:customerCode')

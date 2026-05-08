@@ -12,12 +12,13 @@ export class ChatbotController {
       type: 'object',
       properties: {
         message: { type: 'string' },
-        
       },
     },
   })
-  
-  @ApiResponse({ status: 201, description: 'Chatbot reply generated successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Chatbot reply generated successfully.',
+  })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   // Sends the user's message to the chatbot service and returns its reply.
   @Post()

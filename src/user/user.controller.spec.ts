@@ -1,6 +1,10 @@
-jest.mock('src/book/book.entity', () => ({
-  Book: class Book {},
-}), { virtual: true });
+jest.mock(
+  'src/book/book.entity',
+  () => ({
+    Book: class Book {},
+  }),
+  { virtual: true },
+);
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateUserDto } from './createUser.dto';
@@ -89,7 +93,12 @@ describe('UserController', () => {
         role: Role.ADMIN,
       };
 
-      const created = { id: 2, customerCode: 'cus002', borrowRecords: [], ...dto };
+      const created = {
+        id: 2,
+        customerCode: 'cus002',
+        borrowRecords: [],
+        ...dto,
+      };
 
       service.create.mockResolvedValue(created);
 
@@ -145,7 +154,9 @@ describe('UserController', () => {
 
       service.findUserByCustomerCode.mockResolvedValue(user);
 
-      await expect(controller.findUserByCustomerCode('cus003')).resolves.toEqual(user);
+      await expect(
+        controller.findUserByCustomerCode('cus003'),
+      ).resolves.toEqual(user);
       expect(service.findUserByCustomerCode).toHaveBeenCalledWith('cus003');
     });
 
@@ -158,7 +169,9 @@ describe('UserController', () => {
     it('should propagate errors', async () => {
       service.findUserByCustomerCode.mockRejectedValue(new Error('Not found'));
 
-      await expect(controller.findUserByCustomerCode('x')).rejects.toThrow('Not found');
+      await expect(controller.findUserByCustomerCode('x')).rejects.toThrow(
+        'Not found',
+      );
     });
   });
 
@@ -184,7 +197,9 @@ describe('UserController', () => {
 
       service.update.mockResolvedValue(updated);
 
-      await expect(controller.updateUser('cus004', dto)).resolves.toEqual(updated);
+      await expect(controller.updateUser('cus004', dto)).resolves.toEqual(
+        updated,
+      );
       expect(service.update).toHaveBeenCalledWith('cus004', dto);
     });
 
@@ -203,7 +218,9 @@ describe('UserController', () => {
     it('should propagate errors', async () => {
       service.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(controller.updateUser('cus004', {})).rejects.toThrow('Update failed');
+      await expect(controller.updateUser('cus004', {})).rejects.toThrow(
+        'Update failed',
+      );
     });
   });
 
@@ -221,7 +238,9 @@ describe('UserController', () => {
     it('should propagate errors', async () => {
       service.deleteAll.mockRejectedValue(new Error('Delete all failed'));
 
-      await expect(controller.deleteAllUsers()).rejects.toThrow('Delete all failed');
+      await expect(controller.deleteAllUsers()).rejects.toThrow(
+        'Delete all failed',
+      );
     });
   });
 
@@ -232,14 +251,20 @@ describe('UserController', () => {
     it('should call service with code', async () => {
       service.deleteUserByCustomerCode.mockResolvedValue(undefined);
 
-      await expect(controller.deleteUserByCustomerCode('cus007')).resolves.toBeUndefined();
+      await expect(
+        controller.deleteUserByCustomerCode('cus007'),
+      ).resolves.toBeUndefined();
       expect(service.deleteUserByCustomerCode).toHaveBeenCalledWith('cus007');
     });
 
     it('should propagate errors', async () => {
-      service.deleteUserByCustomerCode.mockRejectedValue(new Error('Delete failed'));
+      service.deleteUserByCustomerCode.mockRejectedValue(
+        new Error('Delete failed'),
+      );
 
-      await expect(controller.deleteUserByCustomerCode('cus007')).rejects.toThrow('Delete failed');
+      await expect(
+        controller.deleteUserByCustomerCode('cus007'),
+      ).rejects.toThrow('Delete failed');
     });
   });
 });

@@ -95,7 +95,9 @@ describe('BorrowController', () => {
 
       service.getUserBorrows.mockResolvedValue(borrows);
 
-      await expect(controller.getUserBorrows('cus001')).resolves.toEqual(borrows);
+      await expect(controller.getUserBorrows('cus001')).resolves.toEqual(
+        borrows,
+      );
       expect(service.getUserBorrows).toHaveBeenCalledWith('cus001');
     });
   });

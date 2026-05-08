@@ -1,5 +1,9 @@
 // borrow.service.ts
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BorrowRecord, BorrowStatus } from './borrow.entity';
@@ -28,7 +32,9 @@ export class BorrowService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const book = await this.bookRepo.findOne({ where: { bookCode: dto.bookCode } });
+    const book = await this.bookRepo.findOne({
+      where: { bookCode: dto.bookCode },
+    });
     if (!book) throw new NotFoundException('Book not found');
 
     // 🚨 check if book already borrowed

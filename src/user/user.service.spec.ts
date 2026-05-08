@@ -1,6 +1,10 @@
-jest.mock('src/book/book.entity', () => ({
-  Book: class Book {},
-}), { virtual: true });
+jest.mock(
+  'src/book/book.entity',
+  () => ({
+    Book: class Book {},
+  }),
+  { virtual: true },
+);
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -10,7 +14,6 @@ import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
 import { User } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
-import { UpdateUserDto } from './updateUser.dto';
 import { Role } from './user.enum';
 
 describe('UserService', () => {
@@ -93,8 +96,8 @@ describe('UserService', () => {
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
 
       repository.create!.mockReturnValue(buildUser());
-      repository.save!
-        .mockResolvedValueOnce(buildUser())
+      repository
+        .save!.mockResolvedValueOnce(buildUser())
         .mockResolvedValueOnce(buildUser({ customerCode: 'cus003' }));
 
       await expect(service.create(dto)).resolves.toBeDefined();
@@ -135,7 +138,9 @@ describe('UserService', () => {
     it('should propagate bcrypt errors', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      jest.spyOn(bcrypt, 'hash').mockRejectedValue(new Error('bcrypt failed') as never);
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockRejectedValue(new Error('bcrypt failed') as never);
 
       await expect(
         service.create({
@@ -167,19 +172,19 @@ describe('UserService', () => {
     });
 
     it('should update without password hashing', async () => {
-  const existing = buildUser();
-  repository.findOne!.mockResolvedValue(existing);
+      const existing = buildUser();
+      repository.findOne!.mockResolvedValue(existing);
 
-  const hashSpy = jest.spyOn(bcrypt, 'hash');
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
 
-  repository.save!.mockImplementation(async (u) => u as User);
+      repository.save!.mockImplementation(async (u) => u as User);
 
-  await expect(
-    service.update('cus001', { name: 'New' }),
-  ).resolves.toBeDefined();
+      await expect(
+        service.update('cus001', { name: 'New' }),
+      ).resolves.toBeDefined();
 
-  expect(hashSpy).not.toHaveBeenCalled();
-});
+      expect(hashSpy).not.toHaveBeenCalled();
+    });
 
     it('should handle empty DTO safely', async () => {
       const existing = buildUser();
@@ -203,9 +208,9 @@ describe('UserService', () => {
     it('should throw NotFoundException when user not found', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(
-        service.update('cus999', { name: 'X' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('cus999', { name: 'X' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -216,15 +221,17 @@ describe('UserService', () => {
     it('should return user', async () => {
       repository.findOne!.mockResolvedValue(buildUser());
 
-      await expect(service.findUserByCustomerCode('cus001')).resolves.toBeDefined();
+      await expect(
+        service.findUserByCustomerCode('cus001'),
+      ).resolves.toBeDefined();
     });
 
     it('should throw when not found', async () => {
       repository.findOne!.mockResolvedValue(null);
 
-      await expect(
-        service.findUserByCustomerCode('cus999'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.findUserByCustomerCode('cus999')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -276,9 +283,9 @@ describe('UserService', () => {
     it('should throw when not found', async () => {
       repository.delete!.mockResolvedValue({ affected: 0 } as DeleteResult);
 
-      await expect(
-        service.deleteUserByCustomerCode('cus999'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.deleteUserByCustomerCode('cus999')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should call delete with correct payload', async () => {

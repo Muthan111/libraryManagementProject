@@ -10,7 +10,9 @@ import { AuthModule } from './auth/auth.module';
 import { PassportModule } from '@nestjs/passport';
 import { BorrowModule } from './borrow/borrow.module';
 import { ChatbotModule } from './chatbot/chatbot.module';
-
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -35,10 +37,21 @@ import { ChatbotModule } from './chatbot/chatbot.module';
     AuthModule,
     PassportModule.register({ session: true }),
     BorrowModule,
-    ChatbotModule
+    ChatbotModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60,   // time window in seconds
+        limit: 10, // max requests per window
+      },
+    ]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService,
+    {
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard,
+  },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

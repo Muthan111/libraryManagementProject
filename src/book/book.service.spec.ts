@@ -11,24 +11,11 @@ import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
 import { User } from '../user/user.entity';
-import { Role } from '../user/user.enum';
 
 describe('BookService', () => {
   let service: BookService;
   let bookRepository: jest.Mocked<Partial<Repository<Book>>>;
   let userRepository: jest.Mocked<Partial<Repository<User>>>;
-
-  const buildUser = (overrides: Partial<User> = {}): User =>
-    ({
-      id: 1,
-      customerCode: 'cus001',
-      name: 'Alice',
-      email: 'alice@example.com',
-      password: 'secret',
-      borrowRecords: [],
-      role: Role.MEMBER,
-      ...overrides,
-    }) as User;
 
   const buildBook = (overrides: Partial<Book> = {}): Book =>
     ({
@@ -110,8 +97,8 @@ describe('BookService', () => {
 
       bookRepository.findOne!.mockResolvedValue(null);
       bookRepository.create!.mockReturnValue(created);
-      bookRepository.save!
-        .mockResolvedValueOnce(created)
+      bookRepository
+        .save!.mockResolvedValueOnce(created)
         .mockResolvedValueOnce(final);
 
       await expect(service.create(dto)).resolves.toEqual(final);
@@ -224,7 +211,9 @@ describe('BookService', () => {
 
       bookRepository.findOne!.mockResolvedValue(book);
 
-      await expect(service.findBookByName('Refactoring')).resolves.toEqual(book);
+      await expect(service.findBookByName('Refactoring')).resolves.toEqual(
+        book,
+      );
     });
 
     it('should return null', async () => {

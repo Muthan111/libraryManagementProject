@@ -49,11 +49,13 @@ describe('ChatbotService', () => {
       },
     });
 
-    jest.spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel').mockReturnValue({
-      startChat: jest.fn().mockReturnValue({
-        sendMessage,
-      }),
-    } as never);
+    jest
+      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
+      .mockReturnValue({
+        startChat: jest.fn().mockReturnValue({
+          sendMessage,
+        }),
+      } as never);
 
     await expect(service.handleMessage('hello')).resolves.toEqual({
       reply: 'Direct Gemini reply',
@@ -93,13 +95,17 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest.spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel').mockReturnValue({
-      startChat: jest.fn().mockReturnValue({
-        sendMessage,
-      }),
-    } as never);
+    jest
+      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
+      .mockReturnValue({
+        startChat: jest.fn().mockReturnValue({
+          sendMessage,
+        }),
+      } as never);
 
-    await expect(service.handleMessage('what books do you have?')).resolves.toEqual({
+    await expect(
+      service.handleMessage('what books do you have?'),
+    ).resolves.toEqual({
       reply: 'Here are the books in the library.',
     });
 
@@ -139,11 +145,13 @@ describe('ChatbotService', () => {
       },
     });
 
-    jest.spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel').mockReturnValue({
-      startChat: jest.fn().mockReturnValue({
-        sendMessage,
-      }),
-    } as never);
+    jest
+      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
+      .mockReturnValue({
+        startChat: jest.fn().mockReturnValue({
+          sendMessage,
+        }),
+      } as never);
 
     await expect(service.handleMessage('do something else')).resolves.toEqual({
       reply: 'Fallback reply',

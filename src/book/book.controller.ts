@@ -26,19 +26,22 @@ export class BookController {
   @Post()
   @ApiOperation({ summary: 'Create a new book' })
   @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                Author: { type: 'string' },
-                ISBN: { type: 'string' },
-                status: { type: 'string' }
-            },
-        },
-    })
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        Author: { type: 'string' },
+        ISBN: { type: 'string' },
+        status: { type: 'string' },
+      },
+    },
+  })
   @ApiResponse({ status: 201, description: 'Book created successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
-  @ApiResponse({ status: 409, description: 'Book with the same ISBN already exists.' })
+  @ApiResponse({
+    status: 409,
+    description: 'Book with the same ISBN already exists.',
+  })
   // Creates a new book record from the submitted request body.
   createBook(@Body() data: CreateBookDto) {
     return this.bookService.create(data);
@@ -48,16 +51,16 @@ export class BookController {
   @ApiOperation({ summary: 'Update a book' })
   @ApiParam({ name: 'id', type: 'number' })
   @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                name: { type: 'string' },
-                Author: { type: 'string' },
-                ISBN: { type: 'string' },
-                status: { type: 'string' }
-            },
-        },
-    })
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        Author: { type: 'string' },
+        ISBN: { type: 'string' },
+        status: { type: 'string' },
+      },
+    },
+  })
   @ApiResponse({ status: 200, description: 'Book updated successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
@@ -105,8 +108,11 @@ export class BookController {
   //   return this.bookService.returnBook(bookCode);
   // }
   @ApiOperation({ summary: 'search books by name' })
-  @ApiParam({name: 'name', type: 'string'})
-  @ApiResponse({ status: 200, description: 'Book lookup by name completed successfully.' })
+  @ApiParam({ name: 'name', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Book lookup by name completed successfully.',
+  })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/name/:name')
   // Looks up a single book by its exact name.
@@ -114,21 +120,27 @@ export class BookController {
     return this.bookService.findBookByName(name);
   }
   @ApiOperation({ summary: 'search books by isbn' })
-  @ApiParam({name: 'isbn', type: 'string'})
-  @ApiResponse({ status: 200, description: 'Book lookup by ISBN completed successfully.' })
+  @ApiParam({ name: 'isbn', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Book lookup by ISBN completed successfully.',
+  })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/isbn/:isbn')
   // Looks up a single book by its ISBN value.
-  async findBookByISBN(@Param('isbn') isbn: string){
+  async findBookByISBN(@Param('isbn') isbn: string) {
     return this.bookService.findBookByISBN(isbn);
   }
   @ApiOperation({ summary: 'search books by author' })
-  @ApiParam({name: 'author', type: 'string'})
-  @ApiResponse({ status: 200, description: 'Book lookup by author completed successfully.' })
+  @ApiParam({ name: 'author', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Book lookup by author completed successfully.',
+  })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   @Get('search/author/:author')
   // Looks up a single book by the author's name.
-  async findBookByAuthor(@Param('author') author:string) {
+  async findBookByAuthor(@Param('author') author: string) {
     return this.bookService.findBookByAuthor(author);
   }
 }

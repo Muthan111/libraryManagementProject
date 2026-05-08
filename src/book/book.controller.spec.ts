@@ -1,6 +1,10 @@
-jest.mock('src/book/book.entity', () => ({
-  Book: class Book {},
-}), { virtual: true });
+jest.mock(
+  'src/book/book.entity',
+  () => ({
+    Book: class Book {},
+  }),
+  { virtual: true },
+);
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookController } from './book.controller';
@@ -124,9 +128,9 @@ describe('BookController', () => {
     it('should propagate service errors', async () => {
       service.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(
-        controller.updateBook('1', {} as any),
-      ).rejects.toThrow('Update failed');
+      await expect(controller.updateBook('1', {} as any)).rejects.toThrow(
+        'Update failed',
+      );
     });
 
     it('should handle weird numeric inputs', async () => {
@@ -161,9 +165,7 @@ describe('BookController', () => {
     it('should propagate service errors', async () => {
       service.delete.mockRejectedValue(new Error('Delete failed'));
 
-      await expect(controller.deleteBook('1')).rejects.toThrow(
-        'Delete failed',
-      );
+      await expect(controller.deleteBook('1')).rejects.toThrow('Delete failed');
     });
   });
 
@@ -173,25 +175,21 @@ describe('BookController', () => {
       const book = { bookid: 1, name: 'Refactoring' };
       service.findBookByName.mockResolvedValue(book);
 
-      await expect(
-        controller.findBookByName('Refactoring'),
-      ).resolves.toEqual(book);
+      await expect(controller.findBookByName('Refactoring')).resolves.toEqual(
+        book,
+      );
     });
 
     it('should return null if not found', async () => {
       service.findBookByName.mockResolvedValue(null);
 
-      await expect(
-        controller.findBookByName('unknown'),
-      ).resolves.toBeNull();
+      await expect(controller.findBookByName('unknown')).resolves.toBeNull();
     });
 
     it('should propagate errors', async () => {
       service.findBookByName.mockRejectedValue(new Error('fail'));
 
-      await expect(
-        controller.findBookByName('x'),
-      ).rejects.toThrow('fail');
+      await expect(controller.findBookByName('x')).rejects.toThrow('fail');
     });
   });
 
@@ -201,25 +199,19 @@ describe('BookController', () => {
       const book = { bookid: 2, ISBN: '123' };
       service.findBookByISBN.mockResolvedValue(book);
 
-      await expect(
-        controller.findBookByISBN('123'),
-      ).resolves.toEqual(book);
+      await expect(controller.findBookByISBN('123')).resolves.toEqual(book);
     });
 
     it('should return null if not found', async () => {
       service.findBookByISBN.mockResolvedValue(null);
 
-      await expect(
-        controller.findBookByISBN('unknown'),
-      ).resolves.toBeNull();
+      await expect(controller.findBookByISBN('unknown')).resolves.toBeNull();
     });
 
     it('should propagate errors', async () => {
       service.findBookByISBN.mockRejectedValue(new Error('fail'));
 
-      await expect(
-        controller.findBookByISBN('x'),
-      ).rejects.toThrow('fail');
+      await expect(controller.findBookByISBN('x')).rejects.toThrow('fail');
     });
   });
 
@@ -237,17 +229,13 @@ describe('BookController', () => {
     it('should return null if not found', async () => {
       service.findBookByAuthor.mockResolvedValue(null);
 
-      await expect(
-        controller.findBookByAuthor('unknown'),
-      ).resolves.toBeNull();
+      await expect(controller.findBookByAuthor('unknown')).resolves.toBeNull();
     });
 
     it('should propagate errors', async () => {
       service.findBookByAuthor.mockRejectedValue(new Error('fail'));
 
-      await expect(
-        controller.findBookByAuthor('x'),
-      ).rejects.toThrow('fail');
+      await expect(controller.findBookByAuthor('x')).rejects.toThrow('fail');
     });
   });
 });
