@@ -26,6 +26,48 @@ export class ChatbotService {
                 properties: {},
               },
             },
+            {
+        name: 'findBookByName',
+        description: 'Find a book by its name',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            name: {
+              type: SchemaType.STRING,
+              description: 'Name of the book',
+            },
+          },
+          required: ['name'],
+        },
+      },
+       {
+        name: 'findBookByISBN',
+        description: 'Find a book by its ISBN',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            ISBN: {
+              type: SchemaType.STRING,
+              description: 'ISBN of the book',
+            },
+          },
+          required: ['ISBN'],
+        },
+      },
+      {
+        name: 'findBookByAuthor',
+        description: 'Find books by author name',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            author: {
+              type: SchemaType.STRING,
+              description: 'Author name',
+            },
+          },
+          required: ['author'],
+        },
+      },
           ],
         },
       ],
@@ -49,24 +91,51 @@ export class ChatbotService {
       (part) => part.functionCall,
     )?.functionCall;
 
-    if (toolCall?.name === 'findAllBooks') {
-      const books = await this.bookService.findAll();
+    if (toolCall) {
+  let toolResult: any;
 
-      const secondResult = await chat.sendMessage([
-        {
-          functionResponse: {
-            name: 'findAllBooks',
-            response: {
-              books,
-            },
-          },
+  switch (toolCall.name) {
+    case 'findAllBooks':
+      toolResult = await this.bookService.findAll();
+      break;
+
+    case 'findBookByName':
+      toolResult = await this.bookService.findBookByName(
+        (toolCall.args as { name: string }).name,
+      );
+      break;
+
+    case 'findBookByISBN':
+      toolResult = await this.bookService.findBookByISBN(
+        (toolCall.args as { ISBN: string }).ISBN,
+      );
+      break;
+
+    case 'findBookByAuthor':
+      toolResult = await this.bookService.findBookByAuthor(
+        (toolCall.args as { author: string }).author,
+      );
+      break;
+
+    default:
+      throw new Error(`Unknown tool: ${toolCall.name}`);
+  }
+
+  const secondResult = await chat.sendMessage([
+    {
+      functionResponse: {
+        name: toolCall.name,
+        response: {
+          result: toolResult,
         },
-      ]);
+      },
+    },
+  ]);
 
-      return {
-        reply: secondResult.response.text(),
-      };
-    }
+  return {
+    reply: secondResult.response.text(),
+  };
+}
 
     return {
       reply: response.text(),
