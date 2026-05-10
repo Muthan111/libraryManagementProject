@@ -34,7 +34,8 @@ describe('LoggerMiddleware', () => {
     } as unknown as Response;
 
     const hrtimeSpy = jest.spyOn(process.hrtime, 'bigint');
-    hrtimeSpy.mockReturnValueOnce(1_000_000_000n).mockReturnValueOnce(1_125_000_000n);
+    hrtimeSpy.mockReturnValueOnce(1_000_000_000n);
+    hrtimeSpy.mockReturnValueOnce(1_125_000_000n);
 
     const memoryUsageSpy = jest.spyOn(process, 'memoryUsage');
     memoryUsageSpy

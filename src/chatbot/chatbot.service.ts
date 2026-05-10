@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
+import { Book } from '../book/book.entity';
 @Injectable()
 export class ChatbotService {
   private readonly genAI: GoogleGenerativeAI;
@@ -20,54 +21,53 @@ export class ChatbotService {
             {
               name: 'findAllBooks',
               description: 'Get all books from the library',
-
               parameters: {
                 type: SchemaType.OBJECT,
                 properties: {},
               },
             },
             {
-        name: 'findBookByName',
-        description: 'Find a book by its name',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            name: {
-              type: SchemaType.STRING,
-              description: 'Name of the book',
+              name: 'findBookByName',
+              description: 'Find a book by its name',
+              parameters: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  name: {
+                    type: SchemaType.STRING,
+                    description: 'Name of the book',
+                  },
+                },
+                required: ['name'],
+              },
             },
-          },
-          required: ['name'],
-        },
-      },
-       {
-        name: 'findBookByISBN',
-        description: 'Find a book by its ISBN',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            ISBN: {
-              type: SchemaType.STRING,
-              description: 'ISBN of the book',
+            {
+              name: 'findBookByISBN',
+              description: 'Find a book by its ISBN',
+              parameters: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  ISBN: {
+                    type: SchemaType.STRING,
+                    description: 'ISBN of the book',
+                  },
+                },
+                required: ['ISBN'],
+              },
             },
-          },
-          required: ['ISBN'],
-        },
-      },
-      {
-        name: 'findBookByAuthor',
-        description: 'Find books by author name',
-        parameters: {
-          type: SchemaType.OBJECT,
-          properties: {
-            author: {
-              type: SchemaType.STRING,
-              description: 'Author name',
+            {
+              name: 'findBookByAuthor',
+              description: 'Find books by author name',
+              parameters: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  author: {
+                    type: SchemaType.STRING,
+                    description: 'Author name',
+                  },
+                },
+                required: ['author'],
+              },
             },
-          },
-          required: ['author'],
-        },
-      },
           ],
         },
       ],
@@ -92,50 +92,74 @@ export class ChatbotService {
     )?.functionCall;
 
     if (toolCall) {
-  let toolResult: any;
+      type ToolResult = Book | Book[] | null;
 
-  switch (toolCall.name) {
-    case 'findAllBooks':
-      toolResult = await this.bookService.findAll();
-      break;
+      const getStringArg = (args: unknown, key: string): string | undefined => {
+        if (!args || typeof args !== 'object') return undefined;
+        const val = (args as Record<string, unknown>)[key];
+        return typeof val === 'string' ? val : undefined;
+      };
 
-    case 'findBookByName':
-      toolResult = await this.bookService.findBookByName(
-        (toolCall.args as { name: string }).name,
-      );
-      break;
+      let toolResult: ToolResult | undefined;
 
-    case 'findBookByISBN':
-      toolResult = await this.bookService.findBookByISBN(
-        (toolCall.args as { ISBN: string }).ISBN,
-      );
-      break;
+      switch (toolCall.name) {
+        case 'findAllBooks': {
+          toolResult = await this.bookService.findAll();
+          break;
+        }
 
-    case 'findBookByAuthor':
-      toolResult = await this.bookService.findBookByAuthor(
-        (toolCall.args as { author: string }).author,
-      );
-      break;
+        case 'findBookByName': {
+          const name = getStringArg(toolCall.args, 'name');
+          if (!name) {
+            throw new Error(
+              "Missing or invalid argument 'ISBN' for " + toolCall.name,
+            );
+          }
+          toolResult = await this.bookService.findBookByName(name);
+          break;
+        }
 
-    default:
-      throw new Error(`Unknown tool: ${toolCall.name}`);
-  }
+        case 'findBookByISBN': {
+          const isbn = getStringArg(toolCall.args, 'ISBN');
+          if (!isbn) {
+            throw new Error(
+              "Missing or invalid argument 'ISBN' for " + toolCall.name,
+            );
+          }
+          toolResult = await this.bookService.findBookByISBN(isbn);
+          break;
+        }
 
-  const secondResult = await chat.sendMessage([
-    {
-      functionResponse: {
-        name: toolCall.name,
-        response: {
-          result: toolResult,
+        case 'findBookByAuthor': {
+          const author = getStringArg(toolCall.args, 'author');
+          if (!author) {
+            throw new Error(
+              "Missing or invalid argument 'author' for " + toolCall.name,
+            );
+          }
+          toolResult = await this.bookService.findBookByAuthor(author);
+          break;
+        }
+
+        default:
+          throw new Error(`Unknown tool: ${toolCall.name}`);
+      }
+
+      const secondResult = await chat.sendMessage([
+        {
+          functionResponse: {
+            name: toolCall.name,
+            response: {
+              result: toolResult,
+            },
+          },
         },
-      },
-    },
-  ]);
+      ]);
 
-  return {
-    reply: secondResult.response.text(),
-  };
-}
+      return {
+        reply: secondResult.response.text(),
+      };
+    }
 
     return {
       reply: response.text(),
