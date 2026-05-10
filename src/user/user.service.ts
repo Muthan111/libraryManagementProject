@@ -9,7 +9,6 @@ import { User } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
 import * as bcrypt from 'bcrypt';
-
 @Injectable()
 export class UserService {
   // Injects the repository used for all user persistence operations.

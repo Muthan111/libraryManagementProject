@@ -33,32 +33,8 @@ describe('LoggerMiddleware', () => {
       }),
     } as unknown as Response;
 
-    const hrtimeSpy = jest.spyOn(process.hrtime, 'bigint');
-    hrtimeSpy
-      .mockReturnValueOnce(BigInt(1_000_000_000))
-      .mockReturnValueOnce(BigInt(1_125_000_000));
-
-    const memorySpy = jest.spyOn(process, 'memoryUsage');
-    memorySpy
-      .mockReturnValueOnce({
-        rss: 0,
-        heapTotal: 0,
-        heapUsed: 10 * 1024 * 1024,
-        external: 0,
-        arrayBuffers: 0,
-      })
-      .mockReturnValueOnce({
-        rss: 0,
-        heapTotal: 0,
-        heapUsed: 12 * 1024 * 1024,
-        external: 0,
-        arrayBuffers: 0,
-      });
-
-    const cpuUsageSpy = jest.spyOn(process, 'cpuUsage');
-    cpuUsageSpy
-      .mockReturnValueOnce({ user: 1000, system: 500 })
-      .mockReturnValueOnce({ user: 4000, system: 2000 });
+    const nowSpy = jest.spyOn(Date, 'now');
+    nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1125);
 
     middleware.use(req, res, next);
 
@@ -72,8 +48,6 @@ describe('LoggerMiddleware', () => {
       'GET /books 200 | 125.00ms | memory 2.00MB | CPU user 4.00ms system 2.00ms',
     );
 
-    hrtimeSpy.mockRestore();
-    memorySpy.mockRestore();
-    cpuUsageSpy.mockRestore();
+    nowSpy.mockRestore();
   });
 });
