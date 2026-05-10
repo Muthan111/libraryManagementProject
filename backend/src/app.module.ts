@@ -13,6 +13,7 @@ import { ChatbotModule } from './chatbot/chatbot.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { MetricsModule } from './metrics/metrics.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -44,6 +45,7 @@ import { APP_GUARD } from '@nestjs/core';
         limit: 10, // max requests per window
       },
     ]),
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [
