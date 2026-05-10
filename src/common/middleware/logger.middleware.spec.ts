@@ -34,28 +34,31 @@ describe('LoggerMiddleware', () => {
     } as unknown as Response;
 
     const hrtimeSpy = jest.spyOn(process.hrtime, 'bigint');
-    hrtimeSpy.mockReturnValueOnce(1_000_000_000n);
-    hrtimeSpy.mockReturnValueOnce(1_125_000_000n);
+    hrtimeSpy
+      .mockReturnValueOnce(BigInt(1_000_000_000))
+      .mockReturnValueOnce(BigInt(1_125_000_000));
 
     const memoryUsageSpy = jest.spyOn(process, 'memoryUsage');
     memoryUsageSpy
       .mockReturnValueOnce({
+        rss: 0,
+        heapTotal: 0,
         heapUsed: 10 * 1024 * 1024,
-      } as NodeJS.MemoryUsage)
+        external: 0,
+        arrayBuffers: 0,
+      })
       .mockReturnValueOnce({
-        heapUsed: 10.24 * 1024 * 1024,
-      } as NodeJS.MemoryUsage);
+        rss: 0,
+        heapTotal: 0,
+        heapUsed: 12 * 1024 * 1024,
+        external: 0,
+        arrayBuffers: 0,
+      });
 
     const cpuUsageSpy = jest.spyOn(process, 'cpuUsage');
     cpuUsageSpy
-      .mockReturnValueOnce({
-        user: 0,
-        system: 0,
-      })
-      .mockReturnValueOnce({
-        user: 0,
-        system: 0,
-      });
+      .mockReturnValueOnce({ user: 1000, system: 500 })
+      .mockReturnValueOnce({ user: 4000, system: 2000 });
 
     middleware.use(req, res, next);
 
@@ -66,7 +69,7 @@ describe('LoggerMiddleware', () => {
     finishHandlers[0]();
 
     expect(logSpy).toHaveBeenCalledWith(
-      'GET /books 200 | ⏱ 125.00ms | 🧠 ΔMemory 0.24MB | 🔥 CPU user 0.00ms system 0.00ms',
+      'GET /books 200 | 125.00ms | memory 2.00MB | CPU user 4.00ms system 2.00ms',
     );
 
     hrtimeSpy.mockRestore();
