@@ -32,6 +32,7 @@ async function bootstrap() {
   );
 
   app.disable('x-powered-by');
+  app.enableCors();
 
   // -------------------------
   // Global validation

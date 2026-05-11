@@ -4,6 +4,6 @@ import { Injectable } from '@nestjs/common';
 export class AppService {
   // Provides the static greeting returned by the root controller.
   getHello(): string {
-    return 'Hello World!';
+    return 'Hello World! from Backend';
   }
 }

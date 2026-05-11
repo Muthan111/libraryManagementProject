@@ -19,6 +19,7 @@ export class UserService {
 
   // Returns every user currently stored in the database.
   findAll() {
+    console.log('Finding all users');
     return this.userRepository.find();
   }
 

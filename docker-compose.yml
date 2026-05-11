@@ -1,6 +1,14 @@
-version: "3.8"
-
 services:
+  frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+      container_name: library-frontend
+      ports:
+        - "5173:80"
+      depends_on:
+        - libraryapp
+      restart: unless-stopped
   libraryapp:
     build: ./backend
     ports:
