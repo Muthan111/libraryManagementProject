@@ -29,9 +29,9 @@ describe('AppController', () => {
   });
 
   it('returns the greeting from the app service', () => {
-    appService.getHello.mockReturnValue('Hello World!');
+    appService.getHello.mockReturnValue('Hello World! from Backend');
 
-    expect(controller.getHello()).toBe('Hello World!');
+    expect(controller.getHello()).toBe('Hello World! from Backend');
     expect(appService.getHello).toHaveBeenCalledTimes(1);
   });
 });

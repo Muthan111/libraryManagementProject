@@ -17,6 +17,6 @@ describe('AppService', () => {
   });
 
   it('returns the default greeting', () => {
-    expect(service.getHello()).toBe('Hello World!');
+    expect(service.getHello()).toBe('Hello World! from Backend');
   });
 });
