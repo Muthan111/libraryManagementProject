@@ -72,6 +72,16 @@ services:
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
+  redis:
+    image: redis:7-alpine
+    container_name: libraryapp-redis
+    env_file:
+      - ./backend/.env
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
 volumes:
   mysql_data:
+  redis_data:
