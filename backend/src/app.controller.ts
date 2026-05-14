@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AppService } from './app.service';
-
 @Controller()
 export class AppController {
   // Injects the application service used by the root endpoint.

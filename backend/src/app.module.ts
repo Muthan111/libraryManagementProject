@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -14,6 +19,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { MetricsModule } from './metrics/metrics.module';
+import { PrometheusMiddleware } from '../src/common/middleware/prometheus.middleware';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -59,5 +65,12 @@ import { MetricsModule } from './metrics/metrics.module';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes('*');
+    consumer
+      .apply(PrometheusMiddleware)
+      .exclude({ path: 'metrics', method: RequestMethod.GET })
+      .exclude({ path: 'driver/login', method: RequestMethod.POST })
+      .exclude({ path: 'api', method: RequestMethod.GET })
+      .exclude({ path: 'api/live/ws', method: RequestMethod.GET })
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }
