@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 // import * as session from 'express-session';
 // import * as passport from 'passport';
 // import helmet from 'helmet';
-import { GlobalExceptionFilter } from './common/exception.filter';
+// import { GlobalExceptionFilter } from './common/exception.filter';
 // import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { connectRedis } from './config/redis';
@@ -95,7 +95,7 @@ async function bootstrap() {
   // -------------------------
   // Global exception filter
   // -------------------------
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  // app.useGlobalFilters(new GlobalExceptionFilter());
 
   // -------------------------
   // Swagger setup (disable in production)
