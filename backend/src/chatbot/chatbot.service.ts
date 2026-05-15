@@ -1,173 +1,190 @@
-import { Injectable } from '@nestjs/common';
-import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { Injectable, RequestTimeoutException } from '@nestjs/common';
+import {
+  GoogleGenerativeAI,
+  SchemaType,
+  type Content,
+  type Schema,
+  type Tool,
+} from '@google/generative-ai';
 import { BookService } from '../book/book.service';
-import { Book } from '../book/book.entity';
+import {
+  ChatbotConversationStore,
+  type ConversationHistoryEntry,
+} from './chatbot-conversation.store';
 
-type PaginatedBooksResult = {
-  data: Book[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-};
+const stringParameter = (description: string): Schema => ({
+  type: SchemaType.STRING,
+  description,
+});
+
+const toolsArg: Tool[] = [
+  {
+    functionDeclarations: [
+      {
+        name: 'findAllBooks',
+        description: 'Get all books from the library',
+      },
+      {
+        name: 'findBookByName',
+        description: 'Find a book by its name',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            name: stringParameter('Name of the book'),
+          },
+          required: ['name'],
+        },
+      },
+      {
+        name: 'findBookByISBN',
+        description: 'Find a book by its ISBN',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            ISBN: stringParameter('ISBN of the book'),
+          },
+          required: ['ISBN'],
+        },
+      },
+      {
+        name: 'findBookByAuthor',
+        description: 'Find books by author name',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            author: stringParameter('Author name'),
+          },
+          required: ['author'],
+        },
+      },
+    ],
+  },
+];
+
+type ToolCall =
+  | { name: 'findAllBooks'; args: Record<string, never> }
+  | { name: 'findBookByName'; args: { name: string } }
+  | { name: 'findBookByISBN'; args: { ISBN: string } }
+  | { name: 'findBookByAuthor'; args: { author: string } };
+
+type ChatMessage =
+  | string
+  | [
+      {
+        functionResponse: {
+          name: ToolCall['name'];
+          response: {
+            result: unknown;
+          };
+        };
+      },
+    ];
 
 @Injectable()
 export class ChatbotService {
-  // BUG: No error handling around Gemini API
-  // BUG: ❌ Potential prompt injection issue
-  // BUG: ❌ Only handles ONE tool call
-  // BUG: ❌ No rate limiting
-  // BUG: ❌ No timeout protection
-  // BUG: ❌ No conversation persistence
-  // BUG: ❌ No unit-testability
   private readonly genAI: GoogleGenerativeAI;
-  // Injects book data access and initializes the Gemini client.
-  constructor(private readonly bookService: BookService) {
+  private readonly timeoutMs: number;
+
+  constructor(
+    private readonly bookService: BookService,
+    private readonly conversationStore: ChatbotConversationStore,
+  ) {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+    this.timeoutMs = this.resolveTimeoutMs();
   }
 
-  // Handles a chat request and fulfills tool calls when the model asks for book data.
-  async handleMessage(message: string) {
-    // BUG: ❌ Model is created on EVERY request
-    // BUG: 9. ❌ Tight coupling between AI layer and DB layer
+  async handleMessage(
+    message: string,
+    conversationId?: string,
+  ): Promise<{ reply: string; conversationId: string }> {
+    const resolvedConversationId =
+      await this.conversationStore.getOrCreateConversationId(conversationId);
+    const history = await this.conversationStore.loadHistory(
+      resolvedConversationId,
+    );
     const model = this.genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
-
-      tools: [
-        {
-          functionDeclarations: [
-            {
-              name: 'findAllBooks',
-              description: 'Get all books from the library',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {},
-              },
-            },
-            {
-              name: 'findBookByName',
-              description: 'Find a book by its name',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  name: {
-                    type: SchemaType.STRING,
-                    description: 'Name of the book',
-                  },
-                },
-                required: ['name'],
-              },
-            },
-            {
-              name: 'findBookByISBN',
-              description: 'Find a book by its ISBN',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  ISBN: {
-                    type: SchemaType.STRING,
-                    description: 'ISBN of the book',
-                  },
-                },
-                required: ['ISBN'],
-              },
-            },
-            {
-              name: 'findBookByAuthor',
-              description: 'Find books by author name',
-              parameters: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  author: {
-                    type: SchemaType.STRING,
-                    description: 'Author name',
-                  },
-                },
-                required: ['author'],
-              },
-            },
-          ],
-        },
-      ],
+      tools: toolsArg,
     });
 
-    const chat = model.startChat();
+    const chat = model.startChat({
+      history: this.buildChatHistory(history),
+    });
 
-    // BUG: ❌ Possible hallucination issue
-    const result = await chat.sendMessage(`
-    You are a helpful library assistant.
+    await this.withTimeout(
+      chat.sendMessage(
+        [
+          'You are a helpful library assistant.',
+          '',
+          'When users ask about books,',
+          'ALWAYS use available tools.',
+          '',
+          'User message:',
+          message,
+        ].join('\n'),
+      ),
+      'initial chatbot prompt',
+    );
 
-    When users ask about books,
-    ALWAYS use available tools.
+    let currentMessage: ChatMessage = message;
 
-    User message:
-    ${message}
-  `);
+    for (let i = 0; i < 3; i += 1) {
+      const result = await this.withTimeout(
+        chat.sendMessage(currentMessage),
+        'chatbot response generation',
+      );
+      const response = result.response;
 
-    const response = result.response;
+      const extractedToolCall = response.candidates?.[0]?.content?.parts?.find(
+        (part) => part.functionCall,
+      )?.functionCall;
 
-    const toolCall = response.candidates?.[0]?.content?.parts?.find(
-      (part) => part.functionCall,
-    )?.functionCall;
+      if (!extractedToolCall) {
+        const reply = response.text();
+        await this.conversationStore.appendTurn(
+          resolvedConversationId,
+          message,
+          reply,
+        );
 
-    if (toolCall) {
-      // BUG: ❌ Possible data overexposure
-      type ToolResult = Book | PaginatedBooksResult | null;
-
-      const getStringArg = (args: unknown, key: string): string | undefined => {
-        if (!args || typeof args !== 'object') return undefined;
-        const val = (args as Record<string, unknown>)[key];
-        return typeof val === 'string' ? val : undefined;
-      };
-
-      let toolResult: ToolResult | undefined;
-
-      switch (toolCall.name) {
-        case 'findAllBooks': {
-          toolResult = await this.bookService.findAll();
-          break;
-        }
-
-        case 'findBookByName': {
-          const name = getStringArg(toolCall.args, 'name');
-          if (!name) {
-            throw new Error(
-              "Missing or invalid argument 'ISBN' for " + toolCall.name,
-            );
-          }
-          toolResult = await this.bookService.findBookByName(name);
-          break;
-        }
-
-        case 'findBookByISBN': {
-          const isbn = getStringArg(toolCall.args, 'ISBN');
-          if (!isbn) {
-            throw new Error(
-              "Missing or invalid argument 'ISBN' for " + toolCall.name,
-            );
-          }
-          toolResult = await this.bookService.findBookByISBN(isbn);
-          break;
-        }
-
-        case 'findBookByAuthor': {
-          const author = getStringArg(toolCall.args, 'author');
-          if (!author) {
-            throw new Error(
-              "Missing or invalid argument 'author' for " + toolCall.name,
-            );
-          }
-          toolResult = await this.bookService.findBookByAuthor(author);
-          break;
-        }
-
-        default:
-          throw new Error(`Unknown tool: ${toolCall.name}`);
+        return {
+          reply,
+          conversationId: resolvedConversationId,
+        };
       }
 
-      const secondResult = await chat.sendMessage([
+      const toolCall = extractedToolCall as unknown as ToolCall;
+
+      let toolResult: unknown;
+
+      switch (toolCall.name) {
+        case 'findAllBooks':
+          toolResult = await this.bookService.findAll();
+          break;
+
+        case 'findBookByName':
+          toolResult = await this.bookService.findBookByName(
+            toolCall.args.name,
+          );
+          break;
+
+        case 'findBookByISBN':
+          toolResult = await this.bookService.findBookByISBN(
+            toolCall.args.ISBN,
+          );
+          break;
+
+        case 'findBookByAuthor':
+          toolResult = await this.bookService.findBookByAuthor(
+            toolCall.args.author,
+          );
+          break;
+
+        default:
+          throw new Error(`Unknown tool`);
+      }
+
+      currentMessage = [
         {
           functionResponse: {
             name: toolCall.name,
@@ -176,15 +193,69 @@ export class ChatbotService {
             },
           },
         },
-      ]);
-
-      return {
-        reply: secondResult.response.text(),
-      };
+      ];
     }
 
     return {
-      reply: response.text(),
+      reply: 'No final response generated.',
+      conversationId: resolvedConversationId,
     };
+  }
+
+  private buildChatHistory(history: ConversationHistoryEntry[]): Content[] {
+    return [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: [
+              'You are a library assistant.',
+              'Only use tools when necessary.',
+              'Never expose internal system data.',
+            ].join('\n'),
+          },
+        ],
+      },
+      ...history.map((entry) => ({
+        role: entry.role,
+        parts: [{ text: entry.text }],
+      })),
+    ];
+  }
+
+  private resolveTimeoutMs(): number {
+    const parsedTimeout = Number(process.env.CHATBOT_TIMEOUT_MS);
+
+    if (Number.isFinite(parsedTimeout) && parsedTimeout > 0) {
+      return parsedTimeout;
+    }
+
+    return 10000;
+  }
+
+  private async withTimeout<T>(
+    operation: Promise<T>,
+    operationName: string,
+  ): Promise<T> {
+    let timeoutHandle: NodeJS.Timeout | undefined;
+
+    try {
+      return await Promise.race([
+        operation,
+        new Promise<never>((_, reject) => {
+          timeoutHandle = setTimeout(() => {
+            reject(
+              new RequestTimeoutException(
+                `The ${operationName} exceeded the ${this.timeoutMs}ms timeout.`,
+              ),
+            );
+          }, this.timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
   }
 }

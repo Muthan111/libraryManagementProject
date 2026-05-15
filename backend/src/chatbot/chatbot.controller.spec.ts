@@ -31,23 +31,32 @@ describe('ChatbotController', () => {
   it('passes the incoming message to the chatbot service', async () => {
     chatbotService.handleMessage.mockResolvedValue({
       reply: 'Hello from the bot',
+      conversationId: 'conversation-1',
     });
 
-    await expect(controller.chat({ message: 'hello' })).resolves.toEqual({
+    await expect(
+      controller.chat({ message: 'hello', conversationId: 'conversation-1' }),
+    ).resolves.toEqual({
       reply: 'Hello from the bot',
+      conversationId: 'conversation-1',
     });
 
-    expect(chatbotService.handleMessage).toHaveBeenCalledWith('hello');
+    expect(chatbotService.handleMessage).toHaveBeenCalledWith(
+      'hello',
+      'conversation-1',
+    );
   });
 
   it('forwards an empty message string unchanged', async () => {
     chatbotService.handleMessage.mockResolvedValue({
       reply: 'Please ask a question.',
+      conversationId: 'conversation-2',
     });
 
     await expect(controller.chat({ message: '' })).resolves.toEqual({
       reply: 'Please ask a question.',
+      conversationId: 'conversation-2',
     });
-    expect(chatbotService.handleMessage).toHaveBeenCalledWith('');
+    expect(chatbotService.handleMessage).toHaveBeenCalledWith('', undefined);
   });
 });
