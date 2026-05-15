@@ -9,7 +9,7 @@ import { Book } from './book.entity';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
 import { User } from '../user/user.entity';
-
+import { generateCode } from 'src/utils/code-generator';
 @Injectable()
 export class BookService {
   // Injects repositories needed to manage books and related user lookups.
@@ -27,6 +27,7 @@ export class BookService {
   }
 
   // Creates a book, enforcing unique ISBN values and generating a book code.
+  // BUG: Double-save pattern in create() (same issue as before)
   async create(bookData: CreateBookDto) {
     const existingBook = await this.bookRepository.findOne({
       where: { ISBN: bookData.ISBN },
@@ -39,6 +40,8 @@ export class BookService {
     }
 
     const enteredData = this.bookRepository.create(bookData);
+    const bookcode = generateCode('BK-XXXX-####');
+    enteredData.bookCode = bookcode;
     const savedBook = await this.bookRepository.save(enteredData);
 
     savedBook.bookCode = `BK${savedBook.bookid.toString().padStart(3, '0')}`;
@@ -60,6 +63,7 @@ export class BookService {
   }
 
   // Deletes a book by id and reports success when the record is removed.
+  // BUG: ❗ delete() does not check soft delete possibility
   async delete(bookid: number) {
     const deleteResult = await this.bookRepository.delete({ bookid });
 

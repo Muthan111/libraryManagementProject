@@ -2,6 +2,10 @@ jest.mock('../user/user.entity', () => ({
   User: class User {},
 }));
 
+jest.mock('src/utils/code-generator', () => ({
+  generateCode: jest.fn(() => 'BK-ABCD-1234'),
+}), { virtual: true });
+
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,6 +15,7 @@ import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
 import { User } from '../user/user.entity';
+import { generateCode } from 'src/utils/code-generator';
 
 describe('BookService', () => {
   let service: BookService;
@@ -92,7 +97,7 @@ describe('BookService', () => {
         status: 'AVAILABLE',
       };
 
-      const created = buildBook({ ...dto });
+      const created = buildBook({ ...dto, bookCode: 'BK-ABCD-1234' });
       const final = buildBook({ bookCode: 'BK001', ...dto });
 
       bookRepository.findOne!.mockResolvedValue(null);
@@ -102,6 +107,16 @@ describe('BookService', () => {
         .mockResolvedValueOnce(final);
 
       await expect(service.create(dto)).resolves.toEqual(final);
+      expect(bookRepository.findOne).toHaveBeenCalledWith({
+        where: { ISBN: dto.ISBN },
+      });
+      expect(bookRepository.create).toHaveBeenCalledWith(dto);
+      expect(generateCode).toHaveBeenCalledWith('BK-XXXX-####');
+      expect(bookRepository.save).toHaveBeenNthCalledWith(1, created);
+      expect(bookRepository.save).toHaveBeenNthCalledWith(2, {
+        ...created,
+        bookCode: 'BK001',
+      });
     });
 
     it('should throw on duplicate ISBN', async () => {
@@ -188,7 +203,9 @@ describe('BookService', () => {
     it('should delete successfully', async () => {
       bookRepository.delete!.mockResolvedValue({ affected: 1 } as DeleteResult);
 
-      await expect(service.delete(1)).resolves.toBeDefined();
+      await expect(service.delete(1)).resolves.toEqual({
+        message: 'Book with id 1 deleted successfully',
+      });
     });
 
     it('should throw if not found', async () => {
@@ -221,6 +238,14 @@ describe('BookService', () => {
 
       await expect(service.findBookByName('x')).resolves.toBeNull();
     });
+
+    it('should throw not found exception on repository error', async () => {
+      bookRepository.findOne!.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(service.findBookByName('x')).rejects.toThrow(
+        new NotFoundException('Error finding book by name'),
+      );
+    });
   });
 
   // ---------------- FIND BY ISBN ----------------
@@ -237,6 +262,14 @@ describe('BookService', () => {
       bookRepository.findOne!.mockResolvedValue(null);
 
       await expect(service.findBookByISBN('x')).resolves.toBeNull();
+    });
+
+    it('should throw not found exception on repository error', async () => {
+      bookRepository.findOne!.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(service.findBookByISBN('x')).rejects.toThrow(
+        new NotFoundException('Error finding book by ISBN'),
+      );
     });
   });
 
@@ -256,6 +289,14 @@ describe('BookService', () => {
       bookRepository.findOne!.mockResolvedValue(null);
 
       await expect(service.findBookByAuthor('x')).resolves.toBeNull();
+    });
+
+    it('should throw not found exception on repository error', async () => {
+      bookRepository.findOne!.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(service.findBookByAuthor('x')).rejects.toThrow(
+        new NotFoundException('Error finding book by author'),
+      );
     });
   });
 });

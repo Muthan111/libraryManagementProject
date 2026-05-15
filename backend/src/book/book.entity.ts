@@ -5,7 +5,7 @@ export class Book {
   @PrimaryGeneratedColumn()
   bookid: number;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ unique: true })
   bookCode: string;
 
   @Column()
