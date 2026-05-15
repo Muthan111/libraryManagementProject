@@ -2,9 +2,13 @@ jest.mock('../user/user.entity', () => ({
   User: class User {},
 }));
 
-jest.mock('src/utils/code-generator', () => ({
-  generateCode: jest.fn(() => 'BK-ABCD-1234'),
-}), { virtual: true });
+jest.mock(
+  'src/utils/code-generator',
+  () => ({
+    generateCode: jest.fn(() => 'BK-ABCD-1234'),
+  }),
+  { virtual: true },
+);
 
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
