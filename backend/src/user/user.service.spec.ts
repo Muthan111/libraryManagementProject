@@ -33,6 +33,7 @@ describe('UserService', () => {
 
   beforeEach(async () => {
     repository = {
+      findAndCount: jest.fn(),
       find: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
@@ -67,16 +68,55 @@ describe('UserService', () => {
   // -------------------------
   describe('findAll', () => {
     it('should return all users', async () => {
-      repository.find!.mockResolvedValue([buildUser()]);
+      repository.findAndCount!.mockResolvedValue([[buildUser()], 1]);
 
-      await expect(service.findAll()).resolves.toHaveLength(1);
-      expect(repository.find).toHaveBeenCalledTimes(1);
+      await expect(service.findAll(1, 10)).resolves.toEqual({
+        data: [buildUser()],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+        },
+      });
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 10,
+      });
     });
 
     it('should return empty array when no users exist', async () => {
-      repository.find!.mockResolvedValue([]);
+      repository.findAndCount!.mockResolvedValue([[], 0]);
 
-      await expect(service.findAll()).resolves.toEqual([]);
+      await expect(service.findAll(1, 10)).resolves.toEqual({
+        data: [],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
+        },
+      });
+    });
+    it('should calculate skip correctly for page 2', async () => {
+      repository.findAndCount!.mockResolvedValue([[buildUser()], 12]);
+
+      await service.findAll(2, 5);
+
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        skip: 5,
+        take: 5,
+      });
+    });
+    it('should normalize invalid page and limit values', async () => {
+      repository.findAndCount!.mockResolvedValue([[], 0]);
+
+      await service.findAll(0, -2);
+
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 1, // or 10, depending on your implementation
+      });
     });
   });
 

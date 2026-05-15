@@ -10,6 +10,7 @@ import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
 import * as bcrypt from 'bcrypt';
 @Injectable()
+// BUG: ❗ inconsistent ID usage vs customerCode usage
 export class UserService {
   // Injects the repository used for all user persistence operations.
   constructor(
@@ -18,13 +19,32 @@ export class UserService {
   ) {}
 
   // Returns every user currently stored in the database.
-  findAll() {
+  // BUG: findAll() has no pagination
+  // TODO: FIX: ADD PAGINATION: LIMIT + OFFSET
+  async findAll(page = 1, limit = 10) {
+    const validPage = Math.max(page, 1);
+    const validLimit = Math.min(Math.max(limit, 1), 100);
+    const [users, total] = await this.userRepository.findAndCount({
+      skip: (validPage - 1) * validLimit,
+      take: validLimit,
+    });
     console.log('Finding all users');
-    return this.userRepository.find();
+    return {
+      data: users,
+      meta: {
+        page: validPage,
+        limit: validLimit,
+        total,
+        totalPages: Math.ceil(total / validLimit),
+      },
+    };
   }
 
   // Creates a user, prevents duplicate emails, and stores a hashed password.
   async create(userData: CreateUserDto) {
+    // BUG: 10. Missing transaction safety in create()
+    // BUG:Unsafe two-step user creation (race condition)
+    // TODO: FIX: Add DB-level unique constraint:
     const existingUser = await this.userRepository.findOne({
       where: { email: userData.email },
     });
@@ -40,6 +60,8 @@ export class UserService {
       ...userData,
       password: hashedPassword,
     });
+    // BUG: customerCode is generated AFTER first save
+    // TODO: FIX: Compute it in-memory before final save: BUT you need ID first → so better patterns:
     const savedUser = await this.userRepository.save(user);
     savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
     const final = await this.userRepository.save(savedUser);
@@ -48,6 +70,9 @@ export class UserService {
 
   // Updates a user by customer code, hashing a new password when provided.
   async update(customerCode: string, userData: UpdateUserDto) {
+    // BUG: update() uses find + save (not optimal)
+    // Problem:extra SELECT query, not atomic
+
     const existingUser = await this.userRepository.findOne({
       where: { customerCode },
     });
@@ -56,7 +81,7 @@ export class UserService {
     if (!existingUser) {
       throw new NotFoundException(`User with id ${customerCode} not found`);
     }
-
+    // BUG: ❗ Password update logic is correct but incomplete
     const updatePayload = { ...userData };
     if (updatePayload.password) {
       updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
@@ -88,6 +113,8 @@ export class UserService {
     });
 
     if (!existingUser) {
+      // BUG: findUserByEmail returns null inconsistently
+      // TODO: CHOOSE A CONSISTENT APPROACH:
       return null;
     }
 
@@ -95,6 +122,7 @@ export class UserService {
   }
 
   // Deletes every user record from the database.
+  // BUG: deleteAll() is dangerous in production
   async deleteAll() {
     return await this.userRepository.clear();
   }
