@@ -9,6 +9,8 @@ import { User } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
 import * as bcrypt from 'bcrypt';
+import { generateCode } from 'src/utils/code-generator';
+
 @Injectable()
 // BUG: ❗ inconsistent ID usage vs customerCode usage
 export class UserService {
@@ -56,16 +58,16 @@ export class UserService {
     }
 
     const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const customerCode = generateCode('CUS-XXXX-####');
     const user = this.userRepository.create({
       ...userData,
       password: hashedPassword,
+      customerCode: customerCode,
     });
     // BUG: customerCode is generated AFTER first save
     // TODO: FIX: Compute it in-memory before final save: BUT you need ID first → so better patterns:
     const savedUser = await this.userRepository.save(user);
-    savedUser.customerCode = `cus${savedUser.id.toString().padStart(3, '0')}`;
-    const final = await this.userRepository.save(savedUser);
-    return final;
+    return savedUser;
   }
 
   // Updates a user by customer code, hashing a new password when provided.

@@ -5,7 +5,14 @@ jest.mock(
   }),
   { virtual: true },
 );
-
+jest.mock(
+  'src/utils/code-generator',
+  () => ({
+    generateCode: jest.fn(),
+  }),
+  { virtual: true },
+);
+import { generateCode } from 'src/utils/code-generator';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -32,6 +39,8 @@ describe('UserService', () => {
   });
 
   beforeEach(async () => {
+    (generateCode as jest.Mock).mockReset();
+
     repository = {
       findAndCount: jest.fn(),
       find: jest.fn(),
@@ -131,20 +140,36 @@ describe('UserService', () => {
         password: 'secret',
         role: Role.MEMBER,
       };
+      const createdUser = buildUser({
+        name: dto.name,
+        email: dto.email,
+        password: 'hashed-password',
+        customerCode: 'CUS-ABCD-1234',
+        role: dto.role,
+      });
 
       repository.findOne!.mockResolvedValue(null);
-      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
+      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
+      (generateCode as jest.Mock).mockReturnValue('CUS-ABCD-1234');
+      repository.create!.mockReturnValue(createdUser);
+      repository.save!.mockResolvedValue(createdUser);
 
-      repository.create!.mockReturnValue(buildUser());
-      repository
-        .save!.mockResolvedValueOnce(buildUser())
-        .mockResolvedValueOnce(buildUser({ customerCode: 'cus003' }));
+      await expect(service.create(dto)).resolves.toEqual(createdUser);
 
-      await expect(service.create(dto)).resolves.toBeDefined();
+      expect(bcrypt.hash).toHaveBeenCalledWith('secret', 10);
+      expect(generateCode).toHaveBeenCalledWith('CUS-XXXX-####');
+      expect(repository.create).toHaveBeenCalledWith({
+        ...dto,
+        password: 'hashed-password',
+        customerCode: 'CUS-ABCD-1234',
+      });
+      expect(repository.save).toHaveBeenCalledTimes(1);
+      expect(repository.save).toHaveBeenCalledWith(createdUser);
     });
 
     it('should throw ConflictException when email exists', async () => {
       repository.findOne!.mockResolvedValue(buildUser());
+      const hashSpy = jest.spyOn(bcrypt, 'hash');
 
       await expect(
         service.create({
@@ -155,24 +180,26 @@ describe('UserService', () => {
         }),
       ).rejects.toThrow(ConflictException);
 
+      expect(hashSpy).not.toHaveBeenCalled();
       expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
     });
 
-    it('should handle race condition during save (unique violation)', async () => {
+    it('should propagate repository save errors', async () => {
+      const dto: CreateUserDto = {
+        name: 'X',
+        email: 'x@example.com',
+        password: '123',
+        role: Role.MEMBER,
+      };
+
       repository.findOne!.mockResolvedValue(null);
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
-
+      (generateCode as jest.Mock).mockReturnValue('CUS-TEST-1234');
       repository.create!.mockReturnValue(buildUser());
-      repository.save!.mockRejectedValue({ code: '23505' });
+      repository.save!.mockRejectedValue(new Error('save failed'));
 
-      await expect(
-        service.create({
-          name: 'X',
-          email: 'x@example.com',
-          password: '123',
-          role: Role.MEMBER,
-        }),
-      ).rejects.toBeDefined();
+      await expect(service.create(dto)).rejects.toThrow('save failed');
     });
 
     it('should propagate bcrypt errors', async () => {
@@ -190,6 +217,8 @@ describe('UserService', () => {
           role: Role.MEMBER,
         }),
       ).rejects.toThrow('bcrypt failed');
+      expect(repository.create).not.toHaveBeenCalled();
+      expect(repository.save).not.toHaveBeenCalled();
     });
   });
 
