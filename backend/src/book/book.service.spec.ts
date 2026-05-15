@@ -41,7 +41,7 @@ describe('BookService', () => {
 
   beforeEach(async () => {
     bookRepository = {
-      find: jest.fn(),
+      findAndCount: jest.fn(),
       findOne: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
@@ -75,19 +75,49 @@ describe('BookService', () => {
 
   // ---------------- FIND ALL ----------------
   describe('findAll', () => {
-    it('should return all books', async () => {
-      bookRepository.find!.mockResolvedValue([buildBook()]);
-      await expect(service.findAll()).resolves.toHaveLength(1);
+    it('should return paginated books', async () => {
+      const books = [buildBook()];
+      bookRepository.findAndCount!.mockResolvedValue([books, 1]);
+
+      await expect(service.findAll(1, 10)).resolves.toEqual({
+        data: books,
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+        },
+      });
     });
 
-    it('should return empty array when no books exist', async () => {
-      bookRepository.find!.mockResolvedValue([]);
-      await expect(service.findAll()).resolves.toEqual([]);
+    it('should return an empty page when no books exist', async () => {
+      bookRepository.findAndCount!.mockResolvedValue([[], 0]);
+
+      await expect(service.findAll(1, 10)).resolves.toEqual({
+        data: [],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 0,
+          totalPages: 0,
+        },
+      });
     });
 
     it('should handle repository errors', async () => {
-      bookRepository.find!.mockRejectedValue(new Error('db crash'));
+      bookRepository.findAndCount!.mockRejectedValue(new Error('db crash'));
       await expect(service.findAll()).rejects.toThrow();
+    });
+
+    it('should normalize invalid pagination values', async () => {
+      bookRepository.findAndCount!.mockResolvedValue([[buildBook()], 1]);
+
+      await service.findAll(0, 500);
+
+      expect(bookRepository.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 100,
+      });
     });
   });
 

@@ -125,7 +125,7 @@ async function bootstrap() {
   // -------------------------
   setupSecurity(app);
   setupValidation(app);
-  setupAuth(app, redisStore);
+  setupAuth(app, null);
   setupFilters(app);
   setupSwagger(app);
   await app.listen(3000);

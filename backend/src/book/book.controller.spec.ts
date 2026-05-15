@@ -6,6 +6,14 @@ jest.mock(
   { virtual: true },
 );
 
+jest.mock(
+  'src/utils/code-generator',
+  () => ({
+    generateCode: jest.fn(() => 'BK-ABCD-1234'),
+  }),
+  { virtual: true },
+);
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { BookController } from './book.controller';
 import { BookService } from './book.service';
@@ -54,12 +62,29 @@ describe('BookController', () => {
 
   // ---------------- FIND ALL ----------------
   describe('findAllBooks', () => {
-    it('should return all books from the service', async () => {
-      const books = [{ bookid: 1, name: 'Clean Architecture' }];
+    it('should return paginated books from the service', async () => {
+      const books = {
+        data: [{ bookid: 1, name: 'Clean Architecture' }],
+        meta: {
+          page: 1,
+          limit: 10,
+          total: 1,
+          totalPages: 1,
+        },
+      };
       service.findAll.mockResolvedValue(books);
 
       await expect(controller.findAllBooks()).resolves.toEqual(books);
       expect(service.findAll).toHaveBeenCalledTimes(1);
+      expect(service.findAll).toHaveBeenCalledWith(1, 10);
+    });
+
+    it('should pass pagination query params to the service', async () => {
+      service.findAll.mockResolvedValue({ data: [], meta: {} });
+
+      await controller.findAllBooks('2', '5');
+
+      expect(service.findAll).toHaveBeenCalledWith(2, 5);
     });
 
     it('should propagate service errors', async () => {

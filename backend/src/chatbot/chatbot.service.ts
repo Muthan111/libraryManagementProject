@@ -2,8 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import { Book } from '../book/book.entity';
+
+type PaginatedBooksResult = {
+  data: Book[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+};
+
 @Injectable()
 export class ChatbotService {
+  // BUG: No error handling around Gemini API
+  // BUG: ❌ Potential prompt injection issue
+  // BUG: ❌ Only handles ONE tool call
+  // BUG: ❌ No rate limiting
+  // BUG: ❌ No timeout protection
+  // BUG: ❌ No conversation persistence
+  // BUG: ❌ No unit-testability
   private readonly genAI: GoogleGenerativeAI;
   // Injects book data access and initializes the Gemini client.
   constructor(private readonly bookService: BookService) {
@@ -12,6 +30,8 @@ export class ChatbotService {
 
   // Handles a chat request and fulfills tool calls when the model asks for book data.
   async handleMessage(message: string) {
+    // BUG: ❌ Model is created on EVERY request
+    // BUG: 9. ❌ Tight coupling between AI layer and DB layer
     const model = this.genAI.getGenerativeModel({
       model: 'gemini-3-flash-preview',
 
@@ -75,6 +95,7 @@ export class ChatbotService {
 
     const chat = model.startChat();
 
+    // BUG: ❌ Possible hallucination issue
     const result = await chat.sendMessage(`
     You are a helpful library assistant.
 
@@ -92,7 +113,8 @@ export class ChatbotService {
     )?.functionCall;
 
     if (toolCall) {
-      type ToolResult = Book | Book[] | null;
+      // BUG: ❌ Possible data overexposure
+      type ToolResult = Book | PaginatedBooksResult | null;
 
       const getStringArg = (args: unknown, key: string): string | undefined => {
         if (!args || typeof args !== 'object') return undefined;

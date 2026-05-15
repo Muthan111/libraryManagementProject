@@ -36,7 +36,7 @@ import { PrometheusMiddleware } from '../src/common/middleware/prometheus.middle
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        synchronize: true,
+        synchronize: false,
         extra: { connectionLimit: 10 },
       }),
     }),

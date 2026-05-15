@@ -3,6 +3,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import { ChatbotService } from './chatbot.service';
 
+jest.mock(
+  'src/utils/code-generator',
+  () => ({
+    generateCode: jest.fn(() => 'BK-ABCD-1234'),
+  }),
+  { virtual: true },
+);
+
 describe('ChatbotService', () => {
   let service: ChatbotService;
   let bookService: {
@@ -74,7 +82,15 @@ describe('ChatbotService', () => {
   });
 
   it('uses the books tool and returns the follow-up response', async () => {
-    const books = [{ bookid: 1, name: 'Clean Code' }];
+    const books = {
+      data: [{ bookid: 1, name: 'Clean Code' }],
+      meta: {
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+      },
+    };
     bookService.findAll.mockResolvedValue(books);
 
     const sendMessage = jest

@@ -6,21 +6,40 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
-import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 @Controller('book')
 export class BookController {
   // Injects book operations used by the book endpoints.
   constructor(private readonly bookService: BookService) {}
   @ApiOperation({ summary: 'Get books' })
   @ApiResponse({ status: 200, description: 'Books retrieved successfully.' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number for pagination',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Number of items per page for pagination',
+  })
   @Get()
-  // Returns the full list of books in the catalog.
-  findAllBooks() {
-    return this.bookService.findAll();
+  // Returns books from the catalog using page-based pagination.
+  findAllBooks(@Query('page') page = '1', @Query('limit') limit = '10') {
+    return this.bookService.findAll(Number(page), Number(limit));
   }
 
   @Post()

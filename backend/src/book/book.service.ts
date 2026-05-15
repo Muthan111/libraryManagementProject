@@ -21,9 +21,24 @@ export class BookService {
     private userRepo: Repository<User>,
   ) {}
 
-  // Returns every book currently stored in the database.
-  findAll() {
-    return this.bookRepository.find();
+  // Returns books with a paginated response envelope.
+  async findAll(page = 1, limit = 10) {
+    const validPage = Math.max(page, 1);
+    const validLimit = Math.min(Math.max(limit, 1), 100);
+    const [books, total] = await this.bookRepository.findAndCount({
+      skip: (validPage - 1) * validLimit,
+      take: validLimit,
+    });
+
+    return {
+      data: books,
+      meta: {
+        page: validPage,
+        limit: validLimit,
+        total,
+        totalPages: Math.ceil(total / validLimit),
+      },
+    };
   }
 
   // Creates a book, enforcing unique ISBN values and generating a book code.
