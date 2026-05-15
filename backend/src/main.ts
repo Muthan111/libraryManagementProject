@@ -8,8 +8,8 @@ import { AppModule } from './app.module';
 // import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { connectRedis } from './config/redis';
-import { RedisStore } from 'connect-redis';
-import { redisClient } from './config/redis';
+// import { RedisStore } from 'connect-redis';
+// import { redisClient } from './config/redis';
 // import { INestApplication } from '@nestjs/common';
 import { setupSecurity } from './appSetup/setupSecurity';
 
@@ -19,9 +19,9 @@ import { setupAuth } from './appSetup/setupAuth';
 import { setupFilters } from './appSetup/setupFilters';
 // BUG: Mixing concerns in bootstrap file
 async function bootstrap() {
-  const redisStore = new RedisStore({
-    client: redisClient,
-  });
+  // const redisStore = new RedisStore({
+  //   client: redisClient,
+  // });
 
   await connectRedis();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

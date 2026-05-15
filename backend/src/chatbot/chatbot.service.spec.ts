@@ -158,9 +158,7 @@ describe('ChatbotService', () => {
       })
       .mockResolvedValueOnce({
         response: {
-          text: jest
-            .fn()
-            .mockReturnValue('Here are the books in the library.'),
+          text: jest.fn().mockReturnValue('Here are the books in the library.'),
         },
       });
 
@@ -182,14 +180,16 @@ describe('ChatbotService', () => {
     expect(bookService.findAll).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenNthCalledWith(
       3,
-      expect.objectContaining({
-        functionResponse: {
-          name: 'findAllBooks',
-          response: {
-            result: books,
+      expect.arrayContaining([
+        expect.objectContaining({
+          functionResponse: {
+            name: 'findAllBooks',
+            response: {
+              result: books,
+            },
           },
-        },
-      }),
+        }),
+      ]),
     );
     expect(conversationStore.appendTurn).toHaveBeenCalledWith(
       'conversation-1',
@@ -286,9 +286,7 @@ describe('ChatbotService', () => {
       })
       .mockResolvedValueOnce({
         response: {
-          text: jest
-            .fn()
-            .mockReturnValue('Here is the book with that ISBN.'),
+          text: jest.fn().mockReturnValue('Here is the book with that ISBN.'),
         },
       });
 
@@ -307,9 +305,7 @@ describe('ChatbotService', () => {
       conversationId: 'conversation-1',
     });
 
-    expect(bookService.findBookByISBN).toHaveBeenCalledWith(
-      '9780135957059',
-    );
+    expect(bookService.findBookByISBN).toHaveBeenCalledWith('9780135957059');
   });
 
   it('uses the findBookByAuthor tool and returns the follow-up response', async () => {
@@ -440,13 +436,14 @@ describe('ChatbotService', () => {
 
     const timeoutService = timeoutModule.get<ChatbotService>(ChatbotService);
     const pendingReply = timeoutService.handleMessage('hello');
+    const timeoutExpectation = expect(pendingReply).rejects.toMatchObject({
+      message: 'The initial chatbot prompt exceeded the 5ms timeout.',
+    });
 
     await jest.advanceTimersByTimeAsync(5);
 
+    await timeoutExpectation;
     await expect(pendingReply).rejects.toBeInstanceOf(RequestTimeoutException);
-    await expect(pendingReply).rejects.toThrow(
-      'The initial chatbot prompt exceeded the 5ms timeout.',
-    );
   });
 
   it('replays stored history before sending the next message', async () => {

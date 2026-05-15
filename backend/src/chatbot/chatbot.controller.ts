@@ -25,9 +25,6 @@ export class ChatbotController {
   // Sends the user's message to the chatbot service and returns its reply.
   @Post()
   async chat(@Body() body: ChatRequestDto) {
-    return this.chatbotService.handleMessage(
-      body.message,
-      body.conversationId,
-    );
+    return this.chatbotService.handleMessage(body.message, body.conversationId);
   }
 }

@@ -153,6 +153,8 @@ export class ChatbotService {
         };
       }
 
+      const requestedToolName =
+        (extractedToolCall as { name?: string }).name ?? 'unknown';
       const toolCall = extractedToolCall as unknown as ToolCall;
 
       let toolResult: unknown;
@@ -181,7 +183,7 @@ export class ChatbotService {
           break;
 
         default:
-          throw new Error(`Unknown tool`);
+          throw new Error(`Unknown tool: ${requestedToolName}`);
       }
 
       currentMessage = [

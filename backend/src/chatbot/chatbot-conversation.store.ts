@@ -19,7 +19,9 @@ export class ChatbotConversationStore {
   async loadHistory(
     conversationId: string,
   ): Promise<ConversationHistoryEntry[]> {
-    const rawHistory = await redisClient.get(this.getConversationKey(conversationId));
+    const rawHistory = await redisClient.get(
+      this.getConversationKey(conversationId),
+    );
 
     if (!rawHistory) {
       return [];
@@ -56,9 +58,13 @@ export class ChatbotConversationStore {
       { role: 'model' as const, text: reply },
     ].slice(-this.historyLimit);
 
-    await redisClient.set(this.getConversationKey(conversationId), JSON.stringify(nextHistory), {
-      EX: this.ttlSeconds,
-    });
+    await redisClient.set(
+      this.getConversationKey(conversationId),
+      JSON.stringify(nextHistory),
+      {
+        EX: this.ttlSeconds,
+      },
+    );
   }
 
   private getConversationKey(conversationId: string): string {
