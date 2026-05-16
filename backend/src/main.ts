@@ -19,7 +19,6 @@ import { setupAuth } from './appSetup/setupAuth';
 import { setupFilters } from './appSetup/setupFilters';
 // BUG: Mixing concerns in bootstrap file
 async function bootstrap() {
-  console.log("Test-ai")
   // const redisStore = new RedisStore({
   //   client: redisClient,
   // });
