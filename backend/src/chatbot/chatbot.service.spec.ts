@@ -4,6 +4,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import { ChatbotService } from './chatbot.service';
 import { ChatbotConversationStore } from './chatbot-conversation.store';
+import {
+  HISTORY_SYSTEM_PROMPT,
+  INITIAL_PROMPT,
+  MAX_TOOL_ITERATIONS,
+} from './chatVariables';
+import { toolsArg } from './toolCall';
 
 jest.mock(
   'src/utils/code-generator',
@@ -27,6 +33,20 @@ describe('ChatbotService', () => {
     appendTurn: jest.Mock;
   };
   const originalTimeout = process.env.CHATBOT_TIMEOUT_MS;
+
+  const createModelMock = (sendMessage: jest.Mock) => {
+    const startChat = jest.fn().mockReturnValue({
+      sendMessage,
+    });
+
+    const getGenerativeModel = jest
+      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
+      .mockReturnValue({
+        startChat,
+      } as never);
+
+    return { startChat, getGenerativeModel };
+  };
 
   beforeEach(async () => {
     process.env.GEMINI_API_KEY = 'test-api-key';
@@ -97,20 +117,23 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    const { getGenerativeModel } = createModelMock(sendMessage);
 
     await expect(service.handleMessage('hello')).resolves.toEqual({
       reply: 'Direct Gemini reply',
       conversationId: 'conversation-1',
     });
 
+    expect(getGenerativeModel).toHaveBeenCalledWith({
+      model: 'gemini-3-flash-preview',
+      tools: toolsArg,
+    });
     expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenNthCalledWith(
+      1,
+      [...INITIAL_PROMPT, '', 'User message:', 'hello'].join('\n'),
+    );
+    expect(sendMessage).toHaveBeenNthCalledWith(2, 'hello');
     expect(bookService.findAll).not.toHaveBeenCalled();
     expect(conversationStore.appendTurn).toHaveBeenCalledWith(
       'conversation-1',
@@ -162,13 +185,7 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     await expect(
       service.handleMessage('what books do you have?'),
@@ -234,13 +251,7 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     await expect(
       service.handleMessage('find The Pragmatic Programmer'),
@@ -290,13 +301,7 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     await expect(
       service.handleMessage('find ISBN 9780135957059'),
@@ -344,13 +349,7 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     await expect(
       service.handleMessage('find books by Robert C. Martin'),
@@ -391,13 +390,7 @@ describe('ChatbotService', () => {
         },
       });
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     await expect(service.handleMessage('do something else')).rejects.toThrow(
       'Unknown tool: unsupportedTool',
@@ -412,13 +405,7 @@ describe('ChatbotService', () => {
     const hangingPromise = new Promise(() => undefined);
     const sendMessage = jest.fn().mockReturnValue(hangingPromise);
 
-    jest
-      .spyOn(GoogleGenerativeAI.prototype, 'getGenerativeModel')
-      .mockReturnValue({
-        startChat: jest.fn().mockReturnValue({
-          sendMessage,
-        }),
-      } as never);
+    createModelMock(sendMessage);
 
     const timeoutModule: TestingModule = await Test.createTestingModule({
       providers: [
@@ -494,6 +481,10 @@ describe('ChatbotService', () => {
       history: expect.arrayContaining([
         expect.objectContaining({
           role: 'user',
+          parts: [{ text: HISTORY_SYSTEM_PROMPT.join('\n') }],
+        }),
+        expect.objectContaining({
+          role: 'user',
           parts: [{ text: 'Hi there' }],
         }),
         expect.objectContaining({
@@ -502,5 +493,52 @@ describe('ChatbotService', () => {
         }),
       ]),
     });
+  });
+
+  it('returns the fallback reply after the maximum tool iterations', async () => {
+    const sendMessage = jest
+      .fn()
+      .mockResolvedValueOnce({
+        response: {
+          text: jest.fn(),
+        },
+      });
+
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
+      sendMessage.mockResolvedValueOnce({
+        response: {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    functionCall: {
+                      name: 'findAllBooks',
+                      args: {},
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+          text: jest.fn(),
+        },
+      });
+    }
+
+    createModelMock(sendMessage);
+    bookService.findAll.mockResolvedValue([]);
+
+    await expect(service.handleMessage('show me books')).resolves.toEqual({
+      reply: 'No final response generated.',
+      conversationId: 'conversation-1',
+    });
+
+    expect(bookService.findAll).toHaveBeenCalledTimes(MAX_TOOL_ITERATIONS);
+    expect(conversationStore.appendTurn).toHaveBeenCalledWith(
+      'conversation-1',
+      'show me books',
+      'No final response generated.',
+    );
   });
 });

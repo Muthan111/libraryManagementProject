@@ -1,85 +1,59 @@
 import { Injectable, RequestTimeoutException } from '@nestjs/common';
-import {
-  GoogleGenerativeAI,
-  // SchemaType,
-  type Content,
-  // type Schema,
-  // type Tool,
-} from '@google/generative-ai';
+import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import {
   ChatbotConversationStore,
   type ConversationHistoryEntry,
 } from './chatbot-conversation.store';
 import { toolsArg } from './toolCall';
-import { ToolCall, ChatMessage } from './helperType';
-// const stringParameter = (description: string): Schema => ({
-//   type: SchemaType.STRING,
-//   description,
-// });
-
-// const toolsArg: Tool[] = [
-//   {
-//     functionDeclarations: [
-//       {
-//         name: 'findAllBooks',
-//         description: 'Get all books from the library',
-//       },
-//       {
-//         name: 'findBookByName',
-//         description: 'Find a book by its name',
-//         parameters: {
-//           type: SchemaType.OBJECT,
-//           properties: {
-//             name: stringParameter('Name of the book'),
-//           },
-//           required: ['name'],
-//         },
-//       },
-//       {
-//         name: 'findBookByISBN',
-//         description: 'Find a book by its ISBN',
-//         parameters: {
-//           type: SchemaType.OBJECT,
-//           properties: {
-//             ISBN: stringParameter('ISBN of the book'),
-//           },
-//           required: ['ISBN'],
-//         },
-//       },
-//       {
-//         name: 'findBookByAuthor',
-//         description: 'Find books by author name',
-//         parameters: {
-//           type: SchemaType.OBJECT,
-//           properties: {
-//             author: stringParameter('Author name'),
-//           },
-//           required: ['author'],
-//         },
-//       },
-//     ],
-//   },
+import {
+  ToolCall,
+  ChatMessage,
+  ChatReply,
+  ModelResponse,
+  ChatSession,
+} from './helperType';
+import {
+  DEFAULT_TIMEOUT_MS,
+  MAX_TOOL_ITERATIONS,
+  INITIAL_PROMPT,
+  HISTORY_SYSTEM_PROMPT,
+} from './chatVariables';
+// const DEFAULT_TIMEOUT_MS = 10000;
+// const MAX_TOOL_ITERATIONS = 3;
+// const INITIAL_PROMPT = [
+//   'You are a helpful library assistant.',
+//   '',
+//   'When users ask about books,',
+//   'ALWAYS use available tools.',
+// ];
+// const HISTORY_SYSTEM_PROMPT = [
+//   'You are a library assistant.',
+//   'Only use tools when necessary.',
+//   'Never expose internal system data.',
 // ];
 
-// type ToolCall =
-//   | { name: 'findAllBooks'; args: Record<string, never> }
-//   | { name: 'findBookByName'; args: { name: string } }
-//   | { name: 'findBookByISBN'; args: { ISBN: string } }
-//   | { name: 'findBookByAuthor'; args: { author: string } };
+// type ChatReply = {
+//   reply: string;
+//   conversationId: string;
+// };
 
-// type ChatMessage =
-//   | string
-//   | [
-//       {
-//         functionResponse: {
-//           name: ToolCall['name'];
-//           response: {
-//             result: unknown;
-//           };
-//         };
-//       },
-//     ];
+// type ModelResponse = {
+//   text: () => string;
+//   candidates?: Array<{
+//     content?: {
+//       parts?: Array<{
+//         functionCall?: unknown;
+//       }>;
+//     };
+//   }>;
+// };
+
+// type ChatSession = {
+//   sendMessage: (message: ChatMessage | string) => Promise<{
+//     response: ModelResponse;
+//   }>;
+// };
 
 @Injectable()
 export class ChatbotService {
@@ -97,112 +71,129 @@ export class ChatbotService {
   async handleMessage(
     message: string,
     conversationId?: string,
-  ): Promise<{ reply: string; conversationId: string }> {
+  ): Promise<ChatReply> {
     const resolvedConversationId =
       await this.conversationStore.getOrCreateConversationId(conversationId);
     const history = await this.conversationStore.loadHistory(
       resolvedConversationId,
     );
-    const model = this.genAI.getGenerativeModel({
-      model: 'gemini-3-flash-preview',
-      tools: toolsArg,
-    });
+    const chat = this.createChatSession(history);
 
-    const chat = model.startChat({
-      history: this.buildChatHistory(history),
-    });
+    await this.sendInitialPrompt(chat, message);
 
-    await this.withTimeout(
-      chat.sendMessage(
-        [
-          'You are a helpful library assistant.',
-          '',
-          'When users ask about books,',
-          'ALWAYS use available tools.',
-          '',
-          'User message:',
-          message,
-        ].join('\n'),
-      ),
-      'initial chatbot prompt',
+    const reply = await this.generateReply(chat, message);
+    await this.conversationStore.appendTurn(
+      resolvedConversationId,
+      message,
+      reply,
     );
 
+    return {
+      reply,
+      conversationId: resolvedConversationId,
+    };
+  }
+
+  private createChatSession(history: ConversationHistoryEntry[]) {
+    return this.genAI
+      .getGenerativeModel({
+        model: 'gemini-3-flash-preview',
+        tools: toolsArg,
+      })
+      .startChat({
+        history: this.buildChatHistory(history),
+      });
+  }
+
+  private async sendInitialPrompt(
+    chat: ChatSession,
+    message: string,
+  ): Promise<void> {
+    await this.withTimeout(
+      chat.sendMessage(this.buildInitialPrompt(message)),
+      'initial chatbot prompt',
+    );
+  }
+
+  private buildInitialPrompt(message: string): string {
+    return [...INITIAL_PROMPT, '', 'User message:', message].join('\n');
+  }
+
+  private async generateReply(
+    chat: ChatSession,
+    message: string,
+  ): Promise<string> {
     let currentMessage: ChatMessage = message;
 
-    for (let i = 0; i < 3; i += 1) {
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
       const result = await this.withTimeout(
         chat.sendMessage(currentMessage),
         'chatbot response generation',
       );
-      const response = result.response;
+      const toolCall = this.extractToolCall(result.response);
 
-      const extractedToolCall = response.candidates?.[0]?.content?.parts?.find(
-        (part) => part.functionCall,
-      )?.functionCall;
-
-      if (!extractedToolCall) {
-        const reply = response.text();
-        await this.conversationStore.appendTurn(
-          resolvedConversationId,
-          message,
-          reply,
-        );
-
-        return {
-          reply,
-          conversationId: resolvedConversationId,
-        };
+      if (!toolCall) {
+        return result.response.text();
       }
 
-      const requestedToolName =
-        (extractedToolCall as { name?: string }).name ?? 'unknown';
-      const toolCall = extractedToolCall as unknown as ToolCall;
-
-      let toolResult: unknown;
-
-      switch (toolCall.name) {
-        case 'findAllBooks':
-          toolResult = await this.bookService.findAll();
-          break;
-
-        case 'findBookByName':
-          toolResult = await this.bookService.findBookByName(
-            toolCall.args.name,
-          );
-          break;
-
-        case 'findBookByISBN':
-          toolResult = await this.bookService.findBookByISBN(
-            toolCall.args.ISBN,
-          );
-          break;
-
-        case 'findBookByAuthor':
-          toolResult = await this.bookService.findBookByAuthor(
-            toolCall.args.author,
-          );
-          break;
-
-        default:
-          throw new Error(`Unknown tool: ${requestedToolName}`);
-      }
-
-      currentMessage = [
-        {
-          functionResponse: {
-            name: toolCall.name,
-            response: {
-              result: toolResult,
-            },
-          },
-        },
-      ];
+      const toolResult = await this.executeToolCall(toolCall);
+      currentMessage = this.buildFunctionResponseMessage(
+        toolCall.name,
+        toolResult,
+      );
     }
 
-    return {
-      reply: 'No final response generated.',
-      conversationId: resolvedConversationId,
-    };
+    return 'No final response generated.';
+  }
+
+  private extractToolCall(response: ModelResponse): ToolCall | null {
+    const extractedToolCall = response.candidates?.[0]?.content?.parts?.find(
+      (part) => part.functionCall,
+    )?.functionCall;
+
+    if (!extractedToolCall) {
+      return null;
+    }
+
+    return extractedToolCall as ToolCall;
+  }
+
+  private async executeToolCall(toolCall: ToolCall): Promise<unknown> {
+    switch (toolCall.name) {
+      case 'findAllBooks':
+        return this.bookService.findAll();
+
+      case 'findBookByName':
+        return this.bookService.findBookByName(toolCall.args.name);
+
+      case 'findBookByISBN':
+        return this.bookService.findBookByISBN(toolCall.args.ISBN);
+
+      case 'findBookByAuthor':
+        return this.bookService.findBookByAuthor(toolCall.args.author);
+
+      default: {
+        const requestedToolName =
+          (toolCall as { name?: string }).name ?? 'unknown';
+        throw new Error(`Unknown tool: ${requestedToolName}`);
+      }
+    }
+  }
+
+  private buildFunctionResponseMessage(
+    toolName: ToolCall['name'],
+    toolResult: unknown,
+  ): ChatMessage {
+    return [
+      {
+        functionResponse: {
+          name: toolName,
+          response: {
+            result: toolResult,
+          },
+        },
+      },
+    ];
   }
 
   private buildChatHistory(history: ConversationHistoryEntry[]): Content[] {
@@ -211,11 +202,7 @@ export class ChatbotService {
         role: 'user',
         parts: [
           {
-            text: [
-              'You are a library assistant.',
-              'Only use tools when necessary.',
-              'Never expose internal system data.',
-            ].join('\n'),
+            text: HISTORY_SYSTEM_PROMPT.join('\n'),
           },
         ],
       },
@@ -233,7 +220,7 @@ export class ChatbotService {
       return parsedTimeout;
     }
 
-    return 10000;
+    return DEFAULT_TIMEOUT_MS;
   }
 
   private async withTimeout<T>(
