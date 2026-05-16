@@ -1,0 +1,124 @@
+name: AI Commit Message Suggestion
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  models: read
+  pull-requests: write
+
+jobs:
+  suggest-commit-message:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build diff for AI prompt
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff "origin/${{ github.base_ref }}...HEAD" > diff.txt
+          elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+            git diff HEAD~1 HEAD > diff.txt
+          else
+            printf 'Initial commit or no previous commit available.\n' > diff.txt
+          fi
+
+      - name: Generate commit message with AI
+        id: suggest
+        uses: actions/github-script@v7
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          script: |
+            const fs = require("fs");
+
+            const rawDiff = fs.readFileSync("diff.txt", "utf8");
+            const diff = rawDiff.length > 12000 ? `${rawDiff.slice(0, 12000)}\n\n[diff truncated]` : rawDiff;
+
+            const prompt = `
+            You are a senior software engineer.
+
+            Generate a clean git commit message for this diff.
+
+            Rules:
+            - Use conventional commits (feat, fix, refactor, chore, docs, test)
+            - Be concise
+            - No emojis
+            - One line only
+            - Return only the commit message text
+
+            Diff:
+            ${diff}
+            `;
+
+            const response = await fetch("https://models.github.ai/inference/chat/completions", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+                Accept: "application/vnd.github+json",
+                "Content-Type": "application/json",
+                "X-GitHub-Api-Version": "2026-03-10"
+              },
+              body: JSON.stringify({
+                model: "openai/gpt-4.1-mini",
+                messages: [
+                  {
+                    role: "system",
+                    content: "You write precise conventional commit messages."
+                  },
+                  {
+                    role: "user",
+                    content: prompt
+                  }
+                ]
+              })
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              core.setFailed(`GitHub Models request failed (${response.status}): ${errorText}`);
+              return;
+            }
+
+            const data = await response.json();
+            const message = data.choices?.[0]?.message?.content?.trim();
+
+            if (!message) {
+              core.setFailed("No commit message was returned by the model.");
+              return;
+            }
+
+            core.setOutput("commit_message", message);
+            console.log(`Suggested commit message: ${message}`);
+
+            await core.summary
+              .addHeading("Suggested Commit Message")
+              .addCodeBlock(message, "text")
+              .write();
+
+      - name: Echo suggestion
+        run: echo "${{ steps.suggest.outputs.commit_message }}"
+
+      - name: Comment suggestion on pull request
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `${{ toJson(steps.suggest.outputs.commit_message) }}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Suggested commit message:\n\n\`\`\`text\n${message}\n\`\`\``
+            });
