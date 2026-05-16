@@ -496,13 +496,11 @@ describe('ChatbotService', () => {
   });
 
   it('returns the fallback reply after the maximum tool iterations', async () => {
-    const sendMessage = jest
-      .fn()
-      .mockResolvedValueOnce({
-        response: {
-          text: jest.fn(),
-        },
-      });
+    const sendMessage = jest.fn().mockResolvedValueOnce({
+      response: {
+        text: jest.fn(),
+      },
+    });
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
       sendMessage.mockResolvedValueOnce({
