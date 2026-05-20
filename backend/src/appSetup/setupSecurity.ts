@@ -17,6 +17,9 @@ export function setupSecurity(app: NestExpressApplication) {
       },
     }),
   );
-  app.enableCors();
+  app.enableCors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+  });
   app.disable('x-powered-by');
 }

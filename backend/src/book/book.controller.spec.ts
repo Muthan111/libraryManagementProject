@@ -122,30 +122,20 @@ describe('BookController', () => {
 
   // ---------------- UPDATE ----------------
   describe('updateBook', () => {
-    it('should convert valid id and pass to service', async () => {
+    it('should forward bookCode string to service', async () => {
       const dto: UpdateBookDto = { name: 'Updated', status: 'BORROWED' };
       const updated = { bookid: 3, ...dto };
 
       service.update.mockResolvedValue(updated);
 
-      await expect(controller.updateBook('3', dto)).resolves.toEqual(updated);
-      expect(service.update).toHaveBeenCalledWith(3, dto);
-    });
-
-    it('should handle NaN id', async () => {
-      service.update.mockResolvedValue({ message: 'handled' });
-
-      await expect(
-        controller.updateBook('not-a-number', { status: 'AVAILABLE' }),
-      ).resolves.toEqual({ message: 'handled' });
-
-      expect(service.update.mock.calls[0][0]).toBeNaN();
+      await expect(controller.updateBook('BK001', dto)).resolves.toEqual(updated);
+      expect(service.update).toHaveBeenCalledWith('BK001', dto);
     });
 
     it('should handle empty update DTO', async () => {
       service.update.mockResolvedValue({ message: 'ok' });
 
-      await expect(controller.updateBook('1', {} as any)).resolves.toEqual({
+      await expect(controller.updateBook('BK001', {} as any)).resolves.toEqual({
         message: 'ok',
       });
     });
@@ -153,21 +143,9 @@ describe('BookController', () => {
     it('should propagate service errors', async () => {
       service.update.mockRejectedValue(new Error('Update failed'));
 
-      await expect(controller.updateBook('1', {} as any)).rejects.toThrow(
+      await expect(controller.updateBook('BK001', {} as any)).rejects.toThrow(
         'Update failed',
       );
-    });
-
-    it('should handle weird numeric inputs', async () => {
-      service.update.mockResolvedValue({ ok: true });
-
-      await controller.updateBook('3.7', {} as any);
-      await controller.updateBook('', {} as any);
-      await controller.updateBook('   5   ', {} as any);
-
-      expect(service.update.mock.calls[0][0]).toBe(3.7);
-      expect(service.update.mock.calls[1][0]).toBe(0);
-      expect(service.update.mock.calls[2][0]).toBe(5);
     });
   });
 

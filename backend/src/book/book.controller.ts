@@ -66,9 +66,9 @@ export class BookController {
     return this.bookService.create(data);
   }
 
-  @Patch(':id')
+  @Patch(':bookCode')
   @ApiOperation({ summary: 'Update a book' })
-  @ApiParam({ name: 'id', type: 'number' })
+  @ApiParam({ name: 'bookCode', type: 'string' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -83,9 +83,9 @@ export class BookController {
   @ApiResponse({ status: 200, description: 'Book updated successfully.' })
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
-  // Updates an existing book by numeric id with the provided changes.
-  updateBook(@Param('id') id: string, @Body() data: UpdateBookDto) {
-    return this.bookService.update(Number(id), data);
+  // Updates an existing book by its bookCode with the provided changes.
+  updateBook(@Param('bookCode') bookCode: string, @Body() data: UpdateBookDto) {
+    return this.bookService.update(bookCode, data);
   }
 
   @Delete(':id')

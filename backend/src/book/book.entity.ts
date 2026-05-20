@@ -14,7 +14,7 @@ export class Book {
   @Column()
   Author: string;
 
-  @Column()
+  @Column({ unique: true })
   ISBN: string;
 
   @Column()

@@ -1,7 +1,3 @@
-jest.mock('../user/user.entity', () => ({
-  User: class User {},
-}));
-
 jest.mock(
   'src/utils/code-generator',
   () => ({
@@ -13,18 +9,17 @@ jest.mock(
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DeleteResult, Repository, DataSource } from 'typeorm';
 import { Book } from './book.entity';
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
 import { UpdateBookDto } from './updateBook.dto';
-import { User } from '../user/user.entity';
 import { generateCode } from 'src/utils/code-generator';
 
 describe('BookService', () => {
   let service: BookService;
   let bookRepository: jest.Mocked<Partial<Repository<Book>>>;
-  let userRepository: jest.Mocked<Partial<Repository<User>>>;
+  let dataSource: jest.Mocked<Partial<DataSource>>;
 
   const buildBook = (overrides: Partial<Book> = {}): Book =>
     ({
@@ -46,11 +41,14 @@ describe('BookService', () => {
       create: jest.fn(),
       save: jest.fn(),
       delete: jest.fn(),
+      update: jest.fn(),
     };
 
-    userRepository = {
-      findOne: jest.fn(),
-    };
+    dataSource = {
+      transaction: jest.fn().mockImplementation(async (cb: any) =>
+        cb({ getRepository: () => bookRepository }),
+      ),
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -60,8 +58,8 @@ describe('BookService', () => {
           useValue: bookRepository,
         },
         {
-          provide: getRepositoryToken(User),
-          useValue: userRepository,
+          provide: DataSource,
+          useValue: dataSource,
         },
       ],
     }).compile();
@@ -132,25 +130,18 @@ describe('BookService', () => {
       };
 
       const created = buildBook({ ...dto, bookCode: 'BK-ABCD-1234' });
-      const final = buildBook({ bookCode: 'BK001', ...dto });
 
       bookRepository.findOne!.mockResolvedValue(null);
       bookRepository.create!.mockReturnValue(created);
-      bookRepository
-        .save!.mockResolvedValueOnce(created)
-        .mockResolvedValueOnce(final);
+      bookRepository.save!.mockResolvedValue(created);
 
-      await expect(service.create(dto)).resolves.toEqual(final);
+      await expect(service.create(dto)).resolves.toEqual(created);
       expect(bookRepository.findOne).toHaveBeenCalledWith({
         where: { ISBN: dto.ISBN },
       });
       expect(bookRepository.create).toHaveBeenCalledWith(dto);
       expect(generateCode).toHaveBeenCalledWith('BK-XXXX-####');
-      expect(bookRepository.save).toHaveBeenNthCalledWith(1, created);
-      expect(bookRepository.save).toHaveBeenNthCalledWith(2, {
-        ...created,
-        bookCode: 'BK001',
-      });
+      expect(bookRepository.save).toHaveBeenCalledWith(created);
     });
 
     it('should throw on duplicate ISBN', async () => {
@@ -190,10 +181,13 @@ describe('BookService', () => {
       const existing = buildBook();
       const update: UpdateBookDto = { name: 'New Name' };
 
-      bookRepository.findOne!.mockResolvedValue(existing);
-      bookRepository.save!.mockImplementation(async (b) => b as Book);
+      bookRepository.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce({
+        ...existing,
+        ...update,
+      } as Book);
+      (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 1 });
 
-      await expect(service.update(1, update)).resolves.toEqual({
+      await expect(service.update(existing.bookCode, update)).resolves.toEqual({
         ...existing,
         ...update,
       });
@@ -205,10 +199,13 @@ describe('BookService', () => {
         status: 'AVAILABLE',
       });
 
-      bookRepository.findOne!.mockResolvedValue(existing);
-      bookRepository.save!.mockImplementation(async (b) => b as Book);
+      bookRepository.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce({
+        ...existing,
+        name: 'New',
+      } as Book);
+      (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 1 });
 
-      const result = await service.update(1, { name: 'New' });
+      const result = await service.update(existing.bookCode, { name: 'New' });
 
       expect(result.name).toBe('New');
       expect(result.status).toBe('AVAILABLE');
@@ -216,19 +213,19 @@ describe('BookService', () => {
 
     it('should throw if book not found', async () => {
       bookRepository.findOne!.mockResolvedValue(null);
+      (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 0 });
 
-      await expect(service.update(99, { name: 'x' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update('NONEXIST', { name: 'x' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should handle save failure', async () => {
       const existing = buildBook();
-
       bookRepository.findOne!.mockResolvedValue(existing);
-      bookRepository.save!.mockRejectedValue(new Error('update fail'));
+      (bookRepository.update as jest.Mock).mockRejectedValue(new Error('update fail'));
 
-      await expect(service.update(1, { name: 'x' })).rejects.toThrow();
+      await expect(service.update(existing.bookCode, { name: 'x' })).rejects.toThrow();
     });
   });
 
