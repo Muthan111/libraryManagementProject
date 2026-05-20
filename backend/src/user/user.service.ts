@@ -16,7 +16,6 @@ import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
 import * as bcrypt from 'bcrypt';
 import { generateCode } from 'src/utils/code-generator';
-
 @Injectable()
 // BUG: inconsistent ID usage vs customerCode usage
 export class UserService {

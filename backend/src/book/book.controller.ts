@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { BookService } from './book.service';
 import { CreateBookDto } from './createBook.dto';
@@ -17,7 +18,12 @@ import {
   ApiParam,
   ApiQuery,
   ApiResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../user/role.decorator';
+import { RolesGuard } from '../user/role.guard';
+import { Role } from '../user/user.enum';
 @Controller('book')
 export class BookController {
   // Injects book operations used by the book endpoints.
@@ -42,7 +48,9 @@ export class BookController {
     return this.bookService.findAll(Number(page), Number(limit));
   }
 
-  @Post()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create a new book' })
   @ApiBody({
     schema: {
@@ -62,11 +70,13 @@ export class BookController {
     description: 'Book with the same ISBN already exists.',
   })
   // Creates a new book record from the submitted request body.
+  @Post()
   createBook(@Body() data: CreateBookDto) {
     return this.bookService.create(data);
   }
-
-  @Patch(':bookCode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Update a book' })
   @ApiParam({ name: 'bookCode', type: 'string' })
   @ApiBody({
@@ -84,16 +94,20 @@ export class BookController {
   @ApiResponse({ status: 400, description: 'Bad Request.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   // Updates an existing book by its bookCode with the provided changes.
+  @Patch(':bookCode')
   updateBook(@Param('bookCode') bookCode: string, @Body() data: UpdateBookDto) {
     return this.bookService.update(bookCode, data);
   }
 
-  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Delete a book' })
   @ApiParam({ name: 'id', type: 'number' })
   @ApiResponse({ status: 200, description: 'Book deleted successfully.' })
   @ApiResponse({ status: 404, description: 'Book not found.' })
   // Deletes a book record that matches the supplied numeric id.
+  @Delete(':id')
   deleteBook(@Param('id') id: string) {
     return this.bookService.delete(Number(id));
   }
