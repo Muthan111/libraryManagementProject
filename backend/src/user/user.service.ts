@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -17,7 +18,7 @@ import * as bcrypt from 'bcrypt';
 import { generateCode } from 'src/utils/code-generator';
 
 @Injectable()
-// BUG: ❗ inconsistent ID usage vs customerCode usage
+// BUG: inconsistent ID usage vs customerCode usage
 export class UserService {
   // Injects the repository used for all user persistence operations.
   constructor(
@@ -48,7 +49,7 @@ export class UserService {
 
   // Creates a user, prevents duplicate emails, and stores a hashed password.
   async create(userData: CreateUserDto) {
-    // BUG: 10. Missing transaction safety in create()
+    // BUG: 10. Missing transaction safety in create() -solved
     // BUG:Unsafe two-step user creation (race condition)
     // TODO: FIX: Add DB-level unique constraint:
     try {
@@ -92,25 +93,51 @@ export class UserService {
 
   // Updates a user by customer code, hashing a new password when provided.
   async update(customerCode: string, userData: UpdateUserDto) {
-    // BUG: update() uses find + save (not optimal)
-    // Problem:extra SELECT query, not atomic
+    const updatePayload: Partial<User> = {};
 
-    const existingUser = await this.userRepository.findOne({
-      where: { customerCode },
-    });
-    console.log('Existing User:', existingUser);
-
-    if (!existingUser) {
-      throw new NotFoundException(`User with id ${customerCode} not found`);
-    }
-    // BUG: ❗ Password update logic is correct but incomplete
-    const updatePayload = { ...userData };
-    if (updatePayload.password) {
-      updatePayload.password = await bcrypt.hash(updatePayload.password, 10);
+    if (userData.name !== undefined) {
+      updatePayload.name = userData.name;
     }
 
-    Object.assign(existingUser, updatePayload);
-    return this.userRepository.save(existingUser);
+    if (userData.email !== undefined) {
+      updatePayload.email = userData.email;
+    }
+
+    if (userData.password !== undefined) {
+      if (userData.password.trim() === '') {
+        throw new BadRequestException('Password cannot be empty');
+      }
+
+      updatePayload.password = await bcrypt.hash(userData.password, 10);
+    }
+
+    if (Object.keys(updatePayload).length === 0) {
+      return this.findUserByCustomerCode(customerCode);
+    }
+
+    try {
+      const result = await this.userRepository.update(
+        { customerCode },
+        updatePayload,
+      );
+
+      if (result.affected === 0) {
+        throw new NotFoundException(
+          `User with customer code ${customerCode} not found`,
+        );
+      }
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as any).driverError?.code === 'ER_DUP_ENTRY'
+      ) {
+        throw new ConflictException('User update violates a unique constraint');
+      }
+
+      throw error;
+    }
+
+    return this.findUserByCustomerCode(customerCode);
   }
 
   // Finds a user by customer code and throws when no matching user exists.
@@ -143,11 +170,6 @@ export class UserService {
     return existingUser;
   }
 
-  // Deletes every user record from the database.
-  // BUG: deleteAll() is dangerous in production
-  async deleteAll() {
-    return await this.userRepository.clear();
-  }
   // Deletes a single user using their customer code.
   async deleteUserByCustomerCode(customerCode: string) {
     const deleteResult: DeleteResult = await this.userRepository.delete({

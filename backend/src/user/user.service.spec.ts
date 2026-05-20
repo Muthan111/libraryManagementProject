@@ -13,10 +13,19 @@ jest.mock(
   { virtual: true },
 );
 import { generateCode } from 'src/utils/code-generator';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, DeleteResult, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeleteResult,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
 import { User } from './user.entity';
@@ -61,6 +70,7 @@ describe('UserService', () => {
       findOne: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
       clear: jest.fn(),
     };
@@ -104,9 +114,6 @@ describe('UserService', () => {
     expect(service).toBeDefined();
   });
 
-  // -------------------------
-  // FIND ALL
-  // -------------------------
   describe('findAll', () => {
     it('should return all users', async () => {
       repository.findAndCount!.mockResolvedValue([[buildUser()], 1]);
@@ -139,6 +146,7 @@ describe('UserService', () => {
         },
       });
     });
+
     it('should calculate skip correctly for page 2', async () => {
       repository.findAndCount!.mockResolvedValue([[buildUser()], 12]);
 
@@ -149,6 +157,7 @@ describe('UserService', () => {
         take: 5,
       });
     });
+
     it('should normalize invalid page and limit values', async () => {
       repository.findAndCount!.mockResolvedValue([[], 0]);
 
@@ -156,14 +165,11 @@ describe('UserService', () => {
 
       expect(repository.findAndCount).toHaveBeenCalledWith({
         skip: 0,
-        take: 1, // or 10, depending on your implementation
+        take: 1,
       });
     });
   });
 
-  // -------------------------
-  // CREATE
-  // -------------------------
   describe('create', () => {
     it('should create user successfully', async () => {
       const dto: CreateUserDto = {
@@ -254,70 +260,79 @@ describe('UserService', () => {
     });
   });
 
-  // -------------------------
-  // UPDATE
-  // -------------------------
   describe('update', () => {
     it('should update user with password hashing', async () => {
-      const existing = buildUser();
-      repository.findOne!.mockResolvedValue(existing);
+      const updatedUser = buildUser({ password: 'hashed' });
+      repository.update!.mockResolvedValue({ affected: 1 } as never);
+      repository.findOne!.mockResolvedValue(updatedUser);
 
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
-      repository.save!.mockImplementation(async (u) => u as User);
 
       await expect(
         service.update('cus001', { password: 'new' }),
-      ).resolves.toBeDefined();
+      ).resolves.toEqual(updatedUser);
 
-      expect(repository.save).toHaveBeenCalledTimes(1);
+      expect(bcrypt.hash).toHaveBeenCalledWith('new', 10);
+      expect(repository.update).toHaveBeenCalledWith(
+        { customerCode: 'cus001' },
+        { password: 'hashed' },
+      );
     });
 
     it('should update without password hashing', async () => {
-      const existing = buildUser();
-      repository.findOne!.mockResolvedValue(existing);
+      const updatedUser = buildUser({ name: 'New' });
+      repository.update!.mockResolvedValue({ affected: 1 } as never);
+      repository.findOne!.mockResolvedValue(updatedUser);
 
       const hashSpy = jest.spyOn(bcrypt, 'hash');
 
-      repository.save!.mockImplementation(async (u) => u as User);
-
-      await expect(
-        service.update('cus001', { name: 'New' }),
-      ).resolves.toBeDefined();
+      await expect(service.update('cus001', { name: 'New' })).resolves.toEqual(
+        updatedUser,
+      );
 
       expect(hashSpy).not.toHaveBeenCalled();
+      expect(repository.update).toHaveBeenCalledWith(
+        { customerCode: 'cus001' },
+        { name: 'New' },
+      );
     });
 
     it('should handle empty DTO safely', async () => {
       const existing = buildUser();
       repository.findOne!.mockResolvedValue(existing);
-      repository.save!.mockImplementation(async (u) => u as User);
 
-      await expect(service.update('cus001', {})).resolves.toBeDefined();
+      await expect(service.update('cus001', {})).resolves.toEqual(existing);
+      expect(repository.update).not.toHaveBeenCalled();
     });
 
-    it('should treat empty password as no update', async () => {
-      const existing = buildUser();
-      repository.findOne!.mockResolvedValue(existing);
-
-      repository.save!.mockImplementation(async (u) => u as User);
-
-      await expect(
-        service.update('cus001', { password: '' }),
-      ).resolves.toBeDefined();
+    it('should reject empty password', async () => {
+      await expect(service.update('cus001', { password: '' })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(repository.update).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when user not found', async () => {
-      repository.findOne!.mockResolvedValue(null);
+      repository.update!.mockResolvedValue({ affected: 0 } as never);
 
       await expect(service.update('cus999', { name: 'X' })).rejects.toThrow(
         NotFoundException,
       );
     });
+
+    it('should map duplicate email errors to ConflictException', async () => {
+      repository.update!.mockRejectedValue(
+        new QueryFailedError('UPDATE user', [], {
+          code: 'ER_DUP_ENTRY',
+        } as any),
+      );
+
+      await expect(
+        service.update('cus001', { email: 'alice@example.com' }),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
-  // -------------------------
-  // FIND BY CUSTOMER CODE
-  // -------------------------
   describe('findUserByCustomerCode', () => {
     it('should return user', async () => {
       repository.findOne!.mockResolvedValue(buildUser());
@@ -336,9 +351,6 @@ describe('UserService', () => {
     });
   });
 
-  // -------------------------
-  // FIND BY EMAIL
-  // -------------------------
   describe('findUserByEmail', () => {
     it('should return user', async () => {
       repository.findOne!.mockResolvedValue(buildUser());
@@ -357,21 +369,6 @@ describe('UserService', () => {
     });
   });
 
-  // -------------------------
-  // DELETE ALL
-  // -------------------------
-  describe('deleteAll', () => {
-    it('should clear repository', async () => {
-      repository.clear!.mockResolvedValue(undefined);
-
-      await expect(service.deleteAll()).resolves.toBeUndefined();
-      expect(repository.clear).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  // -------------------------
-  // DELETE BY CUSTOMER CODE
-  // -------------------------
   describe('deleteUserByCustomerCode', () => {
     it('should delete user', async () => {
       repository.delete!.mockResolvedValue({ affected: 1 } as DeleteResult);

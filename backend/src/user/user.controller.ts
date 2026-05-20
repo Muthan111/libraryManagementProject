@@ -112,15 +112,6 @@ export class UserController {
     return this.userService.update(cusCode, data);
   }
 
-  // BUG:❗ Dangerous endpoint: delete all users (no protection)
-  @ApiOperation({ summary: 'Delete all users' })
-  @ApiResponse({ status: 200, description: 'All users deleted successfully.' })
-  @Delete()
-  // Removes every user record from the database.
-  deleteAllUsers() {
-    return this.userService.deleteAll();
-  }
-
   @ApiOperation({ summary: 'Delete User by Customer Code' })
   @ApiParam({
     name: 'customerCode',

@@ -225,26 +225,6 @@ describe('UserController', () => {
   });
 
   // -------------------------
-  // DELETE ALL
-  // -------------------------
-  describe('deleteAllUsers', () => {
-    it('should call service', async () => {
-      service.deleteAll.mockResolvedValue(undefined);
-
-      await expect(controller.deleteAllUsers()).resolves.toBeUndefined();
-      expect(service.deleteAll).toHaveBeenCalledTimes(1);
-    });
-
-    it('should propagate errors', async () => {
-      service.deleteAll.mockRejectedValue(new Error('Delete all failed'));
-
-      await expect(controller.deleteAllUsers()).rejects.toThrow(
-        'Delete all failed',
-      );
-    });
-  });
-
-  // -------------------------
   // DELETE BY CODE
   // -------------------------
   describe('deleteUserByCustomerCode', () => {
