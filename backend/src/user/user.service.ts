@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeleteResult,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { User } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
 import { UpdateUserDto } from './updateUser.dto';
@@ -18,11 +23,10 @@ export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private dataSource: DataSource,
   ) {}
 
   // Returns every user currently stored in the database.
-  // BUG: findAll() has no pagination
-  // TODO: FIX: ADD PAGINATION: LIMIT + OFFSET
   async findAll(page = 1, limit = 10) {
     const validPage = Math.max(page, 1);
     const validLimit = Math.min(Math.max(limit, 1), 100);
@@ -47,27 +51,43 @@ export class UserService {
     // BUG: 10. Missing transaction safety in create()
     // BUG:Unsafe two-step user creation (race condition)
     // TODO: FIX: Add DB-level unique constraint:
-    const existingUser = await this.userRepository.findOne({
-      where: { email: userData.email },
-    });
+    try {
+      return this.dataSource.transaction(async (manager) => {
+        const userRepository = manager.getRepository(User);
 
-    if (existingUser) {
-      throw new ConflictException(
-        `User with email ${userData.email} already exists`,
-      );
+        const existingUser = await userRepository.findOne({
+          where: { email: userData.email },
+        });
+
+        if (existingUser) {
+          throw new ConflictException(
+            `User with email ${userData.email} already exists`,
+          );
+        }
+
+        const hashedPassword = await bcrypt.hash(userData.password, 10);
+        const customerCode = generateCode('CUS-XXXX-####');
+
+        const user = userRepository.create({
+          ...userData,
+          password: hashedPassword,
+          customerCode,
+        });
+
+        return await userRepository.save(user);
+      });
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as any).driverError?.code === 'ER_DUP_ENTRY'
+      ) {
+        throw new ConflictException(
+          `User with email ${userData.email} already exists`,
+        );
+      }
+
+      throw error;
     }
-
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const customerCode = generateCode('CUS-XXXX-####');
-    const user = this.userRepository.create({
-      ...userData,
-      password: hashedPassword,
-      customerCode: customerCode,
-    });
-    // BUG: customerCode is generated AFTER first save
-    // TODO: FIX: Compute it in-memory before final save: BUT you need ID first → so better patterns:
-    const savedUser = await this.userRepository.save(user);
-    return savedUser;
   }
 
   // Updates a user by customer code, hashing a new password when provided.

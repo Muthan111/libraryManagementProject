@@ -14,7 +14,7 @@ export class User {
   @Column()
   name: string;
   // BUG: 5. Missing important constraints (data integrity risk)
-  @Column()
+  @Column({ unique: true })
   email: string;
   // BUG: 4. ❗ Password stored in plain column (security risk)
   @Column()

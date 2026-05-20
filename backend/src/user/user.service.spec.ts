@@ -16,7 +16,7 @@ import { generateCode } from 'src/utils/code-generator';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DataSource, DeleteResult, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserService } from './user.service';
 import { User } from './user.entity';
@@ -38,6 +38,20 @@ describe('UserService', () => {
     ...overrides,
   });
 
+  let transactionRepository: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
+
+  let manager: {
+    getRepository: jest.Mock;
+  };
+
+  let dataSource: {
+    transaction: jest.Mock;
+  };
+
   beforeEach(async () => {
     (generateCode as jest.Mock).mockReset();
 
@@ -51,12 +65,30 @@ describe('UserService', () => {
       clear: jest.fn(),
     };
 
+    transactionRepository = {
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+
+    manager = {
+      getRepository: jest.fn().mockReturnValue(transactionRepository),
+    };
+
+    dataSource = {
+      transaction: jest.fn(async (callback) => callback(manager)),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
         {
           provide: getRepositoryToken(User),
           useValue: repository,
+        },
+        {
+          provide: DataSource,
+          useValue: dataSource,
         },
       ],
     }).compile();
@@ -148,27 +180,27 @@ describe('UserService', () => {
         role: dto.role,
       });
 
-      repository.findOne!.mockResolvedValue(null);
+      transactionRepository.findOne.mockResolvedValue(null);
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed-password' as never);
       (generateCode as jest.Mock).mockReturnValue('CUS-ABCD-1234');
-      repository.create!.mockReturnValue(createdUser);
-      repository.save!.mockResolvedValue(createdUser);
+      transactionRepository.create.mockReturnValue(createdUser);
+      transactionRepository.save.mockResolvedValue(createdUser);
 
       await expect(service.create(dto)).resolves.toEqual(createdUser);
 
       expect(bcrypt.hash).toHaveBeenCalledWith('secret', 10);
       expect(generateCode).toHaveBeenCalledWith('CUS-XXXX-####');
-      expect(repository.create).toHaveBeenCalledWith({
+      expect(transactionRepository.create).toHaveBeenCalledWith({
         ...dto,
         password: 'hashed-password',
         customerCode: 'CUS-ABCD-1234',
       });
-      expect(repository.save).toHaveBeenCalledTimes(1);
-      expect(repository.save).toHaveBeenCalledWith(createdUser);
+      expect(transactionRepository.save).toHaveBeenCalledTimes(1);
+      expect(transactionRepository.save).toHaveBeenCalledWith(createdUser);
     });
 
     it('should throw ConflictException when email exists', async () => {
-      repository.findOne!.mockResolvedValue(buildUser());
+      transactionRepository.findOne.mockResolvedValue(buildUser());
       const hashSpy = jest.spyOn(bcrypt, 'hash');
 
       await expect(
@@ -181,8 +213,8 @@ describe('UserService', () => {
       ).rejects.toThrow(ConflictException);
 
       expect(hashSpy).not.toHaveBeenCalled();
-      expect(repository.create).not.toHaveBeenCalled();
-      expect(repository.save).not.toHaveBeenCalled();
+      expect(transactionRepository.create).not.toHaveBeenCalled();
+      expect(transactionRepository.save).not.toHaveBeenCalled();
     });
 
     it('should propagate repository save errors', async () => {
@@ -193,11 +225,11 @@ describe('UserService', () => {
         role: Role.MEMBER,
       };
 
-      repository.findOne!.mockResolvedValue(null);
+      transactionRepository.findOne.mockResolvedValue(null);
       jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashed' as never);
       (generateCode as jest.Mock).mockReturnValue('CUS-TEST-1234');
-      repository.create!.mockReturnValue(buildUser());
-      repository.save!.mockRejectedValue(new Error('save failed'));
+      transactionRepository.create.mockReturnValue(buildUser());
+      transactionRepository.save.mockRejectedValue(new Error('save failed'));
 
       await expect(service.create(dto)).rejects.toThrow('save failed');
     });
