@@ -19,6 +19,7 @@ import {
   INITIAL_PROMPT,
   HISTORY_SYSTEM_PROMPT,
 } from './chatVariables';
+import { RagService } from './rag.service';
 // const DEFAULT_TIMEOUT_MS = 10000;
 // const MAX_TOOL_ITERATIONS = 3;
 // const INITIAL_PROMPT = [
@@ -63,11 +64,88 @@ export class ChatbotService {
   constructor(
     private readonly bookService: BookService,
     private readonly conversationStore: ChatbotConversationStore,
+    private readonly ragService: RagService,
   ) {
     this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     this.timeoutMs = this.resolveTimeoutMs();
   }
+  private isToolQuery(message: string): boolean {
+    const msg = message.toLowerCase();
 
+    return (
+      msg.includes('isbn') ||
+      msg.includes('author') ||
+      msg.includes('find book') ||
+      msg.includes('get book') ||
+      msg.includes('books by') ||
+      msg.includes('search book')
+    );
+  }
+
+  private async generateWithRAG(
+    chat: ChatSession,
+    message: string,
+  ): Promise<string> {
+    const ragResults = await this.ragService.search(message);
+
+    const context = ragResults.map((r) => r.text).join('\n\n');
+
+    const enrichedMessage = context.length
+      ? `
+You are a library assistant.
+
+Use the context below:
+
+CONTEXT:
+${context}
+
+USER QUESTION:
+${message}
+`
+      : `
+You are a library assistant.
+
+Answer normally.
+
+USER QUESTION:
+${message}
+`;
+
+    const result = await this.withTimeout(
+      chat.sendMessage(enrichedMessage),
+      'rag response generation',
+    );
+
+    return result.response.text();
+  }
+  private async generateWithTools(
+    chat: ChatSession,
+    message: string,
+  ): Promise<string> {
+    let currentMessage: ChatMessage = message;
+
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+      const result = await this.withTimeout(
+        chat.sendMessage(currentMessage),
+        'tool response generation',
+      );
+
+      const toolCall = this.extractToolCall(result.response);
+
+      if (!toolCall) {
+        return result.response.text();
+      }
+
+      const toolResult = await this.executeToolCall(toolCall);
+
+      currentMessage = this.buildFunctionResponseMessage(
+        toolCall.name,
+        toolResult,
+      );
+    }
+
+    return 'No final response generated.';
+  }
   async handleMessage(
     message: string,
     conversationId?: string,
@@ -97,7 +175,7 @@ export class ChatbotService {
   private createChatSession(history: ConversationHistoryEntry[]) {
     return this.genAI
       .getGenerativeModel({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         tools: toolsArg,
       })
       .startChat({
@@ -123,27 +201,14 @@ export class ChatbotService {
     chat: ChatSession,
     message: string,
   ): Promise<string> {
-    let currentMessage: ChatMessage = message;
+    // STEP 11: Decision layer (RAG vs Tools)
+    const tool = this.isToolQuery(message);
 
-    for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
-      const result = await this.withTimeout(
-        chat.sendMessage(currentMessage),
-        'chatbot response generation',
-      );
-      const toolCall = this.extractToolCall(result.response);
-
-      if (!toolCall) {
-        return result.response.text();
-      }
-
-      const toolResult = await this.executeToolCall(toolCall);
-      currentMessage = this.buildFunctionResponseMessage(
-        toolCall.name,
-        toolResult,
-      );
+    if (tool && message.length < 80) {
+      return this.generateWithTools(chat, message);
     }
 
-    return 'No final response generated.';
+    return this.generateWithRAG(chat, message);
   }
 
   private extractToolCall(response: ModelResponse): ToolCall | null {

@@ -1,4 +1,4 @@
-export const DEFAULT_TIMEOUT_MS = 10000;
+export const DEFAULT_TIMEOUT_MS = 30000;
 export const MAX_TOOL_ITERATIONS = 3;
 export const INITIAL_PROMPT = [
   'You are a helpful library assistant.',
