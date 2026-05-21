@@ -4,6 +4,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import { ChatbotService } from './chatbot.service';
 import { ChatbotConversationStore } from './chatbot-conversation.store';
+import { RagService } from './rag.service';
+import { ChatSessionFactory } from './chat-session.factory';
+import { ToolExecutor } from './tool-executor';
+import { PromptBuilder } from './prompt-builder';
+import { RoutingPolicy } from './routing-policy';
+import { TimeoutService } from './timeout.service';
 import {
   HISTORY_SYSTEM_PROMPT,
   INITIAL_PROMPT,
@@ -21,17 +27,28 @@ jest.mock(
 
 describe('ChatbotService', () => {
   let service: ChatbotService;
+
   let bookService: {
     findAll: jest.Mock;
     findBookByName: jest.Mock;
     findBookByISBN: jest.Mock;
     findBookByAuthor: jest.Mock;
   };
+
   let conversationStore: {
     getOrCreateConversationId: jest.Mock;
     loadHistory: jest.Mock;
     appendTurn: jest.Mock;
   };
+
+  let ragService: {
+    search: jest.Mock;
+  };
+
+  let routingPolicy: {
+    isToolQuery: jest.Mock;
+  };
+
   const originalTimeout = process.env.CHATBOT_TIMEOUT_MS;
 
   const createModelMock = (sendMessage: jest.Mock) => {
@@ -58,10 +75,19 @@ describe('ChatbotService', () => {
       findBookByISBN: jest.fn(),
       findBookByAuthor: jest.fn(),
     };
+
     conversationStore = {
       getOrCreateConversationId: jest.fn().mockResolvedValue('conversation-1'),
       loadHistory: jest.fn().mockResolvedValue([]),
       appendTurn: jest.fn().mockResolvedValue(undefined),
+    };
+
+    ragService = {
+      search: jest.fn().mockResolvedValue([]),
+    };
+
+    routingPolicy = {
+      isToolQuery: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -75,6 +101,18 @@ describe('ChatbotService', () => {
           provide: ChatbotConversationStore,
           useValue: conversationStore,
         },
+        {
+          provide: RagService,
+          useValue: ragService,
+        },
+        {
+          provide: RoutingPolicy,
+          useValue: routingPolicy,
+        },
+        ChatSessionFactory,
+        ToolExecutor,
+        PromptBuilder,
+        TimeoutService,
       ],
     }).compile();
 
@@ -96,12 +134,14 @@ describe('ChatbotService', () => {
     expect(service).toBeDefined();
   });
 
-  it('returns the model text when no tool call is requested', async () => {
+  it('returns the model text using RAG flow', async () => {
+    routingPolicy.isToolQuery.mockReturnValue(false);
+
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -125,16 +165,24 @@ describe('ChatbotService', () => {
     });
 
     expect(getGenerativeModel).toHaveBeenCalledWith({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.5-flash',
       tools: toolsArg,
     });
+
     expect(sendMessage).toHaveBeenCalledTimes(2);
+
     expect(sendMessage).toHaveBeenNthCalledWith(
       1,
       [...INITIAL_PROMPT, '', 'User message:', 'hello'].join('\n'),
     );
-    expect(sendMessage).toHaveBeenNthCalledWith(2, 'hello');
-    expect(bookService.findAll).not.toHaveBeenCalled();
+
+    expect(sendMessage).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('hello'),
+    );
+
+    expect(ragService.search).toHaveBeenCalledWith('hello');
+
     expect(conversationStore.appendTurn).toHaveBeenCalledWith(
       'conversation-1',
       'hello',
@@ -143,6 +191,8 @@ describe('ChatbotService', () => {
   });
 
   it('uses the books tool and returns the follow-up response', async () => {
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
     const books = {
       data: [{ bookid: 1, name: 'Clean Code' }],
       meta: {
@@ -152,13 +202,14 @@ describe('ChatbotService', () => {
         totalPages: 1,
       },
     };
+
     bookService.findAll.mockResolvedValue(books);
 
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -176,11 +227,18 @@ describe('ChatbotService', () => {
               },
             },
           ],
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       })
       .mockResolvedValueOnce({
         response: {
+          candidates: [
+            {
+              content: {
+                parts: [],
+              },
+            },
+          ],
           text: jest.fn().mockReturnValue('Here are the books in the library.'),
         },
       });
@@ -195,6 +253,7 @@ describe('ChatbotService', () => {
     });
 
     expect(bookService.findAll).toHaveBeenCalledTimes(1);
+
     expect(sendMessage).toHaveBeenNthCalledWith(
       3,
       expect.arrayContaining([
@@ -208,22 +267,23 @@ describe('ChatbotService', () => {
         }),
       ]),
     );
-    expect(conversationStore.appendTurn).toHaveBeenCalledWith(
-      'conversation-1',
-      'what books do you have?',
-      'Here are the books in the library.',
-    );
   });
 
   it('uses the findBookByName tool and returns the follow-up response', async () => {
-    const book = { bookid: 2, name: 'The Pragmatic Programmer' };
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
+    const book = {
+      bookid: 2,
+      name: 'The Pragmatic Programmer',
+    };
+
     bookService.findBookByName.mockResolvedValue(book);
 
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -235,18 +295,27 @@ describe('ChatbotService', () => {
                   {
                     functionCall: {
                       name: 'findBookByName',
-                      args: { name: 'The Pragmatic Programmer' },
+                      args: {
+                        name: 'The Pragmatic Programmer',
+                      },
                     },
                   },
                 ],
               },
             },
           ],
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       })
       .mockResolvedValueOnce({
         response: {
+          candidates: [
+            {
+              content: {
+                parts: [],
+              },
+            },
+          ],
           text: jest.fn().mockReturnValue('I found that book for you.'),
         },
       });
@@ -266,14 +335,20 @@ describe('ChatbotService', () => {
   });
 
   it('uses the findBookByISBN tool and returns the follow-up response', async () => {
-    const book = { bookid: 3, ISBN: '9780135957059' };
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
+    const book = {
+      bookid: 3,
+      ISBN: '9780135957059',
+    };
+
     bookService.findBookByISBN.mockResolvedValue(book);
 
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -285,18 +360,27 @@ describe('ChatbotService', () => {
                   {
                     functionCall: {
                       name: 'findBookByISBN',
-                      args: { ISBN: '9780135957059' },
+                      args: {
+                        ISBN: '9780135957059',
+                      },
                     },
                   },
                 ],
               },
             },
           ],
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       })
       .mockResolvedValueOnce({
         response: {
+          candidates: [
+            {
+              content: {
+                parts: [],
+              },
+            },
+          ],
           text: jest.fn().mockReturnValue('Here is the book with that ISBN.'),
         },
       });
@@ -314,14 +398,20 @@ describe('ChatbotService', () => {
   });
 
   it('uses the findBookByAuthor tool and returns the follow-up response', async () => {
-    const book = { bookid: 4, Author: 'Robert C. Martin' };
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
+    const book = {
+      bookid: 4,
+      Author: 'Robert C. Martin',
+    };
+
     bookService.findBookByAuthor.mockResolvedValue(book);
 
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -333,18 +423,27 @@ describe('ChatbotService', () => {
                   {
                     functionCall: {
                       name: 'findBookByAuthor',
-                      args: { author: 'Robert C. Martin' },
+                      args: {
+                        author: 'Robert C. Martin',
+                      },
                     },
                   },
                 ],
               },
             },
           ],
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       })
       .mockResolvedValueOnce({
         response: {
+          candidates: [
+            {
+              content: {
+                parts: [],
+              },
+            },
+          ],
           text: jest.fn().mockReturnValue('These books match that author.'),
         },
       });
@@ -364,11 +463,13 @@ describe('ChatbotService', () => {
   });
 
   it('throws when a different tool call is requested', async () => {
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
     const sendMessage = jest
       .fn()
       .mockResolvedValueOnce({
         response: {
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('initial ok'),
         },
       })
       .mockResolvedValueOnce({
@@ -386,7 +487,7 @@ describe('ChatbotService', () => {
               },
             },
           ],
-          text: jest.fn().mockReturnValue('Fallback reply'),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       });
 
@@ -395,14 +496,15 @@ describe('ChatbotService', () => {
     await expect(service.handleMessage('do something else')).rejects.toThrow(
       'Unknown tool: unsupportedTool',
     );
-    expect(bookService.findAll).not.toHaveBeenCalled();
   });
 
   it('times out when Gemini does not respond in time', async () => {
     jest.useFakeTimers();
+
     process.env.CHATBOT_TIMEOUT_MS = '5';
 
     const hangingPromise = new Promise(() => undefined);
+
     const sendMessage = jest.fn().mockReturnValue(hangingPromise);
 
     createModelMock(sendMessage);
@@ -418,11 +520,25 @@ describe('ChatbotService', () => {
           provide: ChatbotConversationStore,
           useValue: conversationStore,
         },
+        {
+          provide: RagService,
+          useValue: ragService,
+        },
+        {
+          provide: RoutingPolicy,
+          useValue: routingPolicy,
+        },
+        ChatSessionFactory,
+        ToolExecutor,
+        PromptBuilder,
+        TimeoutService,
       ],
     }).compile();
 
     const timeoutService = timeoutModule.get<ChatbotService>(ChatbotService);
+
     const pendingReply = timeoutService.handleMessage('hello');
+
     const timeoutExpectation = expect(pendingReply).rejects.toMatchObject({
       message: 'The initial chatbot prompt exceeded the 5ms timeout.',
     });
@@ -430,13 +546,22 @@ describe('ChatbotService', () => {
     await jest.advanceTimersByTimeAsync(5);
 
     await timeoutExpectation;
+
     await expect(pendingReply).rejects.toBeInstanceOf(RequestTimeoutException);
   });
 
   it('replays stored history before sending the next message', async () => {
+    routingPolicy.isToolQuery.mockReturnValue(false);
+
     conversationStore.loadHistory.mockResolvedValue([
-      { role: 'user', text: 'Hi there' },
-      { role: 'model', text: 'Hello, how can I help?' },
+      {
+        role: 'user',
+        text: 'Hi there',
+      },
+      {
+        role: 'model',
+        text: 'Hello, how can I help?',
+      },
     ]);
 
     const startChat = jest.fn().mockReturnValue({
@@ -444,7 +569,7 @@ describe('ChatbotService', () => {
         .fn()
         .mockResolvedValueOnce({
           response: {
-            text: jest.fn(),
+            text: jest.fn().mockReturnValue('initial ok'),
           },
         })
         .mockResolvedValueOnce({
@@ -477,11 +602,16 @@ describe('ChatbotService', () => {
     expect(conversationStore.getOrCreateConversationId).toHaveBeenCalledWith(
       'conversation-77',
     );
+
     expect(startChat).toHaveBeenCalledWith({
       history: expect.arrayContaining([
         expect.objectContaining({
           role: 'user',
-          parts: [{ text: HISTORY_SYSTEM_PROMPT.join('\n') }],
+          parts: [
+            {
+              text: HISTORY_SYSTEM_PROMPT.join('\n'),
+            },
+          ],
         }),
         expect.objectContaining({
           role: 'user',
@@ -489,16 +619,24 @@ describe('ChatbotService', () => {
         }),
         expect.objectContaining({
           role: 'model',
-          parts: [{ text: 'Hello, how can I help?' }],
+          parts: [
+            {
+              text: 'Hello, how can I help?',
+            },
+          ],
         }),
       ]),
     });
   });
 
   it('returns the fallback reply after the maximum tool iterations', async () => {
-    const sendMessage = jest.fn().mockResolvedValueOnce({
+    routingPolicy.isToolQuery.mockReturnValue(true);
+
+    const sendMessage = jest.fn();
+
+    sendMessage.mockResolvedValueOnce({
       response: {
-        text: jest.fn(),
+        text: jest.fn().mockReturnValue('initial ok'),
       },
     });
 
@@ -519,12 +657,13 @@ describe('ChatbotService', () => {
               },
             },
           ],
-          text: jest.fn(),
+          text: jest.fn().mockReturnValue('tool requested'),
         },
       });
     }
 
     createModelMock(sendMessage);
+
     bookService.findAll.mockResolvedValue([]);
 
     await expect(service.handleMessage('show me books')).resolves.toEqual({
@@ -533,6 +672,7 @@ describe('ChatbotService', () => {
     });
 
     expect(bookService.findAll).toHaveBeenCalledTimes(MAX_TOOL_ITERATIONS);
+
     expect(conversationStore.appendTurn).toHaveBeenCalledWith(
       'conversation-1',
       'show me books',

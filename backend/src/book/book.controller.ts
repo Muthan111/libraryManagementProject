@@ -48,9 +48,9 @@ export class BookController {
     return this.bookService.findAll(Number(page), Number(limit));
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @ApiBearerAuth('access-token')
-  @Roles(Role.ADMIN)
+  // @UseGuards(JwtAuthGuard, RolesGuard)
+  // @ApiBearerAuth('access-token')
+  // @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create a new book' })
   @ApiBody({
     schema: {

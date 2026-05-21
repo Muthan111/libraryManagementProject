@@ -27,7 +27,7 @@ export class RagService {
   async indexBook(bookId: string, content: string) {
     const keys = await redisClient.keys(`rag:book:${bookId}:*`);
     if (keys.length) {
-        await redisClient.del(keys);
+      await redisClient.del(keys);
     }
     const chunks = this.chunkText(content);
 

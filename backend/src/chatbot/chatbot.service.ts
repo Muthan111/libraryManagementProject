@@ -1,11 +1,14 @@
-import { Injectable, RequestTimeoutException } from '@nestjs/common';
-import { GoogleGenerativeAI, type Content } from '@google/generative-ai';
+import { Injectable } from '@nestjs/common';
 import { BookService } from '../book/book.service';
 import {
   ChatbotConversationStore,
   type ConversationHistoryEntry,
 } from './chatbot-conversation.store';
-import { toolsArg } from './toolCall';
+import { ChatSessionFactory } from './chat-session.factory';
+import { ToolExecutor } from './tool-executor';
+import { PromptBuilder } from './prompt-builder';
+import { RoutingPolicy } from './routing-policy';
+import { TimeoutService } from './timeout.service';
 import {
   ToolCall,
   ChatMessage,
@@ -16,71 +19,27 @@ import {
 import {
   DEFAULT_TIMEOUT_MS,
   MAX_TOOL_ITERATIONS,
-  INITIAL_PROMPT,
-  HISTORY_SYSTEM_PROMPT,
+  // INITIAL_PROMPT,
+  // HISTORY_SYSTEM_PROMPT,
 } from './chatVariables';
 import { RagService } from './rag.service';
-// const DEFAULT_TIMEOUT_MS = 10000;
-// const MAX_TOOL_ITERATIONS = 3;
-// const INITIAL_PROMPT = [
-//   'You are a helpful library assistant.',
-//   '',
-//   'When users ask about books,',
-//   'ALWAYS use available tools.',
-// ];
-// const HISTORY_SYSTEM_PROMPT = [
-//   'You are a library assistant.',
-//   'Only use tools when necessary.',
-//   'Never expose internal system data.',
-// ];
-
-// type ChatReply = {
-//   reply: string;
-//   conversationId: string;
-// };
-
-// type ModelResponse = {
-//   text: () => string;
-//   candidates?: Array<{
-//     content?: {
-//       parts?: Array<{
-//         functionCall?: unknown;
-//       }>;
-//     };
-//   }>;
-// };
-
-// type ChatSession = {
-//   sendMessage: (message: ChatMessage | string) => Promise<{
-//     response: ModelResponse;
-//   }>;
-// };
 
 @Injectable()
 export class ChatbotService {
-  private readonly genAI: GoogleGenerativeAI;
   private readonly timeoutMs: number;
-
   constructor(
     private readonly bookService: BookService,
     private readonly conversationStore: ChatbotConversationStore,
     private readonly ragService: RagService,
+    private readonly sessionFactory: ChatSessionFactory,
+    private readonly toolExecutor: ToolExecutor,
+    private readonly promptBuilder: PromptBuilder,
+    private readonly routingPolicy: RoutingPolicy,
+    private readonly timeoutService: TimeoutService,
   ) {
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     this.timeoutMs = this.resolveTimeoutMs();
   }
-  private isToolQuery(message: string): boolean {
-    const msg = message.toLowerCase();
-
-    return (
-      msg.includes('isbn') ||
-      msg.includes('author') ||
-      msg.includes('find book') ||
-      msg.includes('get book') ||
-      msg.includes('books by') ||
-      msg.includes('search book')
-    );
-  }
+  // routingPolicy handles tool-query decisions
 
   private async generateWithRAG(
     chat: ChatSession,
@@ -89,33 +48,17 @@ export class ChatbotService {
     const ragResults = await this.ragService.search(message);
 
     const context = ragResults.map((r) => r.text).join('\n\n');
-
-    const enrichedMessage = context.length
-      ? `
-You are a library assistant.
-
-Use the context below:
-
-CONTEXT:
-${context}
-
-USER QUESTION:
-${message}
-`
-      : `
-You are a library assistant.
-
-Answer normally.
-
-USER QUESTION:
-${message}
-`;
-
-    const result = await this.withTimeout(
-      chat.sendMessage(enrichedMessage),
-      'rag response generation',
+    const enrichedMessage = this.promptBuilder.buildRagEnrichedMessage(
+      context,
+      message,
     );
 
+    const result = await this.timeoutService.withTimeout(
+      chat.sendMessage(enrichedMessage),
+      this.timeoutMs,
+      'rag response generation',
+    );
+    console.log('RAG RESULTS:', ragResults);
     return result.response.text();
   }
   private async generateWithTools(
@@ -125,8 +68,9 @@ ${message}
     let currentMessage: ChatMessage = message;
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-      const result = await this.withTimeout(
+      const result = await this.timeoutService.withTimeout(
         chat.sendMessage(currentMessage),
+        this.timeoutMs,
         'tool response generation',
       );
 
@@ -136,9 +80,9 @@ ${message}
         return result.response.text();
       }
 
-      const toolResult = await this.executeToolCall(toolCall);
+      const toolResult = await this.toolExecutor.run(toolCall);
 
-      currentMessage = this.buildFunctionResponseMessage(
+      currentMessage = this.toolExecutor.buildFunctionResponseMessage(
         toolCall.name,
         toolResult,
       );
@@ -173,28 +117,19 @@ ${message}
   }
 
   private createChatSession(history: ConversationHistoryEntry[]) {
-    return this.genAI
-      .getGenerativeModel({
-        model: 'gemini-2.5-flash',
-        tools: toolsArg,
-      })
-      .startChat({
-        history: this.buildChatHistory(history),
-      });
+    const built = this.promptBuilder.buildChatHistory(history);
+    return this.sessionFactory.create(built);
   }
 
   private async sendInitialPrompt(
     chat: ChatSession,
     message: string,
   ): Promise<void> {
-    await this.withTimeout(
-      chat.sendMessage(this.buildInitialPrompt(message)),
+    await this.timeoutService.withTimeout(
+      chat.sendMessage(this.promptBuilder.buildInitialPrompt(message)),
+      this.timeoutMs,
       'initial chatbot prompt',
     );
-  }
-
-  private buildInitialPrompt(message: string): string {
-    return [...INITIAL_PROMPT, '', 'User message:', message].join('\n');
   }
 
   private async generateReply(
@@ -202,7 +137,7 @@ ${message}
     message: string,
   ): Promise<string> {
     // STEP 11: Decision layer (RAG vs Tools)
-    const tool = this.isToolQuery(message);
+    const tool = this.routingPolicy.isToolQuery(message);
 
     if (tool && message.length < 80) {
       return this.generateWithTools(chat, message);
@@ -222,62 +157,6 @@ ${message}
 
     return extractedToolCall as ToolCall;
   }
-
-  private async executeToolCall(toolCall: ToolCall): Promise<unknown> {
-    switch (toolCall.name) {
-      case 'findAllBooks':
-        return this.bookService.findAll();
-
-      case 'findBookByName':
-        return this.bookService.findBookByName(toolCall.args.name);
-
-      case 'findBookByISBN':
-        return this.bookService.findBookByISBN(toolCall.args.ISBN);
-
-      case 'findBookByAuthor':
-        return this.bookService.findBookByAuthor(toolCall.args.author);
-
-      default: {
-        const requestedToolName =
-          (toolCall as { name?: string }).name ?? 'unknown';
-        throw new Error(`Unknown tool: ${requestedToolName}`);
-      }
-    }
-  }
-
-  private buildFunctionResponseMessage(
-    toolName: ToolCall['name'],
-    toolResult: unknown,
-  ): ChatMessage {
-    return [
-      {
-        functionResponse: {
-          name: toolName,
-          response: {
-            result: toolResult,
-          },
-        },
-      },
-    ];
-  }
-
-  private buildChatHistory(history: ConversationHistoryEntry[]): Content[] {
-    return [
-      {
-        role: 'user',
-        parts: [
-          {
-            text: HISTORY_SYSTEM_PROMPT.join('\n'),
-          },
-        ],
-      },
-      ...history.map((entry) => ({
-        role: entry.role,
-        parts: [{ text: entry.text }],
-      })),
-    ];
-  }
-
   private resolveTimeoutMs(): number {
     const parsedTimeout = Number(process.env.CHATBOT_TIMEOUT_MS);
 
@@ -286,31 +165,5 @@ ${message}
     }
 
     return DEFAULT_TIMEOUT_MS;
-  }
-
-  private async withTimeout<T>(
-    operation: Promise<T>,
-    operationName: string,
-  ): Promise<T> {
-    let timeoutHandle: NodeJS.Timeout | undefined;
-
-    try {
-      return await Promise.race([
-        operation,
-        new Promise<never>((_, reject) => {
-          timeoutHandle = setTimeout(() => {
-            reject(
-              new RequestTimeoutException(
-                `The ${operationName} exceeded the ${this.timeoutMs}ms timeout.`,
-              ),
-            );
-          }, this.timeoutMs);
-        }),
-      ]);
-    } finally {
-      if (timeoutHandle) {
-        clearTimeout(timeoutHandle);
-      }
-    }
   }
 }
