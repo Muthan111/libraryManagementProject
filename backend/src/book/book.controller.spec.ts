@@ -128,7 +128,9 @@ describe('BookController', () => {
 
       service.update.mockResolvedValue(updated);
 
-      await expect(controller.updateBook('BK001', dto)).resolves.toEqual(updated);
+      await expect(controller.updateBook('BK001', dto)).resolves.toEqual(
+        updated,
+      );
       expect(service.update).toHaveBeenCalledWith('BK001', dto);
     });
 

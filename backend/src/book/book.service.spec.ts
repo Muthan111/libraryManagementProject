@@ -45,9 +45,11 @@ describe('BookService', () => {
     };
 
     dataSource = {
-      transaction: jest.fn().mockImplementation(async (cb: any) =>
-        cb({ getRepository: () => bookRepository }),
-      ),
+      transaction: jest
+        .fn()
+        .mockImplementation(async (cb: any) =>
+          cb({ getRepository: () => bookRepository }),
+        ),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -181,10 +183,12 @@ describe('BookService', () => {
       const existing = buildBook();
       const update: UpdateBookDto = { name: 'New Name' };
 
-      bookRepository.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce({
-        ...existing,
-        ...update,
-      } as Book);
+      bookRepository
+        .findOne!.mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce({
+          ...existing,
+          ...update,
+        } as Book);
       (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 1 });
 
       await expect(service.update(existing.bookCode, update)).resolves.toEqual({
@@ -199,10 +203,12 @@ describe('BookService', () => {
         status: 'AVAILABLE',
       });
 
-      bookRepository.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce({
-        ...existing,
-        name: 'New',
-      } as Book);
+      bookRepository
+        .findOne!.mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce({
+          ...existing,
+          name: 'New',
+        } as Book);
       (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 1 });
 
       const result = await service.update(existing.bookCode, { name: 'New' });
@@ -215,17 +221,21 @@ describe('BookService', () => {
       bookRepository.findOne!.mockResolvedValue(null);
       (bookRepository.update as jest.Mock).mockResolvedValue({ affected: 0 });
 
-      await expect(
-        service.update('NONEXIST', { name: 'x' }),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('NONEXIST', { name: 'x' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should handle save failure', async () => {
       const existing = buildBook();
       bookRepository.findOne!.mockResolvedValue(existing);
-      (bookRepository.update as jest.Mock).mockRejectedValue(new Error('update fail'));
+      (bookRepository.update as jest.Mock).mockRejectedValue(
+        new Error('update fail'),
+      );
 
-      await expect(service.update(existing.bookCode, { name: 'x' })).rejects.toThrow();
+      await expect(
+        service.update(existing.bookCode, { name: 'x' }),
+      ).rejects.toThrow();
     });
   });
 
