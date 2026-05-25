@@ -52,9 +52,7 @@ describe('JwtStrategy', () => {
           email: 'missing@example.com',
           role: Role.MEMBER,
         }),
-      ).rejects.toThrow(
-        new UnauthorizedException('User no longer exists'),
-      );
+      ).rejects.toThrow(new UnauthorizedException('User no longer exists'));
     });
   });
 });

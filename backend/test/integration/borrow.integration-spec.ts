@@ -40,11 +40,13 @@ describe('Borrow integration', () => {
 
     expect(bookResponse.status).toBe(201);
 
-    const borrowResponse = await request(app.getHttpServer()).post('/borrow').send({
-      customerCode: member.customerCode,
-      bookCode: bookResponse.body.bookCode,
-      dueDate: '2026-06-01T00:00:00.000Z',
-    });
+    const borrowResponse = await request(app.getHttpServer())
+      .post('/borrow')
+      .send({
+        customerCode: member.customerCode,
+        bookCode: bookResponse.body.bookCode,
+        dueDate: '2026-06-01T00:00:00.000Z',
+      });
 
     expect(borrowResponse.status).toBe(201);
     expect(borrowResponse.body.status).toBe(BorrowStatus.BORROWED);

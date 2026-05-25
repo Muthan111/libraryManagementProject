@@ -24,12 +24,14 @@ describe('Auth integration', () => {
   });
 
   it('registers a user, rejects duplicates, and logs in successfully', async () => {
-    const createResponse = await request(app.getHttpServer()).post('/user').send({
-      name: 'Admin User',
-      email: 'admin.integration@test.com',
-      password: 'password123',
-      role: Role.ADMIN,
-    });
+    const createResponse = await request(app.getHttpServer())
+      .post('/user')
+      .send({
+        name: 'Admin User',
+        email: 'admin.integration@test.com',
+        password: 'password123',
+        role: Role.ADMIN,
+      });
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.customerCode).toMatch(/^CUS-/);

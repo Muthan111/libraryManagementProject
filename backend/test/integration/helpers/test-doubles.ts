@@ -17,6 +17,7 @@ export class FakeChatSessionFactory {
   create(): ChatSession {
     return {
       sendMessage: async (_message: ChatMessage | string) => {
+        void _message;
         return createTextResponse('Integration test chatbot response');
       },
     };
@@ -25,10 +26,13 @@ export class FakeChatSessionFactory {
 
 export class FakeRagService {
   async search(_message: string) {
+    void _message;
     return [];
   }
 
   async indexBook(_bookId: string, _content: string) {
+    void _bookId;
+    void _content;
     return;
   }
 }

@@ -17,9 +17,7 @@ export type CreateAppOptions = {
   connectToRedis?: boolean;
 };
 
-function isTestingModule(
-  value: NestApplicationInput,
-): value is TestingModule {
+function isTestingModule(value: NestApplicationInput): value is TestingModule {
   return typeof (value as TestingModule).createNestApplication === 'function';
 }
 

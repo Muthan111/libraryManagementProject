@@ -24,12 +24,14 @@ describe('Book integration', () => {
   });
 
   it('creates books, enforces unique ISBNs, and supports list plus search flows', async () => {
-    const createResponse = await request(app.getHttpServer()).post('/book').send({
-      name: '1984',
-      Author: 'George Orwell',
-      ISBN: '9780451524935',
-      status: 'AVAILABLE',
-    });
+    const createResponse = await request(app.getHttpServer())
+      .post('/book')
+      .send({
+        name: '1984',
+        Author: 'George Orwell',
+        ISBN: '9780451524935',
+        status: 'AVAILABLE',
+      });
 
     expect(createResponse.status).toBe(201);
     expect(createResponse.body.bookCode).toMatch(/^BK-/);
@@ -87,12 +89,14 @@ describe('Book integration', () => {
       role: Role.MEMBER,
     });
 
-    const createResponse = await request(app.getHttpServer()).post('/book').send({
-      name: 'Dune',
-      Author: 'Frank Herbert',
-      ISBN: '9780441172719',
-      status: 'AVAILABLE',
-    });
+    const createResponse = await request(app.getHttpServer())
+      .post('/book')
+      .send({
+        name: 'Dune',
+        Author: 'Frank Herbert',
+        ISBN: '9780441172719',
+        status: 'AVAILABLE',
+      });
 
     expect(createResponse.status).toBe(201);
 

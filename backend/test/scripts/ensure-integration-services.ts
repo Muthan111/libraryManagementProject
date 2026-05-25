@@ -1,14 +1,14 @@
-const fs = require('fs');
-const net = require('net');
-const path = require('path');
-const { spawnSync } = require('child_process');
+import { spawnSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as net from 'node:net';
+import * as path from 'node:path';
 
 const backendDir = path.resolve(__dirname, '..', '..');
 const repoRoot = path.resolve(backendDir, '..');
 const composeFile = path.join(repoRoot, 'docker-compose.test.yml');
 const envFile = path.join(backendDir, '.env.test');
 
-function parseEnvFile(filePath) {
+function parseEnvFile(filePath: string): Record<string, string> {
   if (!fs.existsSync(filePath)) {
     return {};
   }
@@ -16,7 +16,7 @@ function parseEnvFile(filePath) {
   return fs
     .readFileSync(filePath, 'utf8')
     .split(/\r?\n/)
-    .reduce((env, line) => {
+    .reduce<Record<string, string>>((env, line) => {
       const trimmed = line.trim();
 
       if (!trimmed || trimmed.startsWith('#')) {
@@ -56,12 +56,16 @@ function getServiceConfig() {
   };
 }
 
-function canConnect(host, port, timeoutMs = 1000) {
+function canConnect(
+  host: string,
+  port: number,
+  timeoutMs = 1000,
+): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     let settled = false;
 
-    const finish = (result) => {
+    const finish = (result: boolean) => {
       if (settled) {
         return;
       }
@@ -79,7 +83,7 @@ function canConnect(host, port, timeoutMs = 1000) {
   });
 }
 
-async function servicesReady(config) {
+async function servicesReady(config: ReturnType<typeof getServiceConfig>) {
   const [dbReady, redisReady] = await Promise.all([
     canConnect(config.dbHost, config.dbPort),
     canConnect(config.redisHost, config.redisPort),
@@ -107,7 +111,11 @@ function runDockerCompose() {
   }
 }
 
-async function waitForServices(config, attempts = 24, delayMs = 2500) {
+async function waitForServices(
+  config: ReturnType<typeof getServiceConfig>,
+  attempts = 24,
+  delayMs = 2500,
+) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     if (await servicesReady(config)) {
       return true;
@@ -147,7 +155,7 @@ async function main() {
   console.log('Integration services are ready.');
 }
 
-main().catch((error) => {
+main().catch((error: Error) => {
   console.error(
     'Unable to prepare integration test services. Ensure Docker Desktop is running and your account can access the Docker daemon.',
   );
