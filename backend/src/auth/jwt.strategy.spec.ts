@@ -1,10 +1,17 @@
+import { UnauthorizedException } from '@nestjs/common';
+import { Role } from '../user/user.enum';
 import { JwtStrategy } from './jwt.strategy';
 
 describe('JwtStrategy', () => {
   let strategy: JwtStrategy;
+  let userRepository: { findOne: jest.Mock };
 
   beforeEach(() => {
-    strategy = new JwtStrategy();
+    userRepository = {
+      findOne: jest.fn(),
+    };
+
+    strategy = new JwtStrategy(userRepository as any);
   });
 
   it('should be defined', () => {
@@ -12,44 +19,42 @@ describe('JwtStrategy', () => {
   });
 
   describe('validate', () => {
-    it('should map JWT payload fields to the auth user shape', async () => {
-      const payload = {
-        sub: 42,
+    it('should return the mapped auth user when the user still exists', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 42,
         email: 'librarian@example.com',
-        role: 'admin',
-      };
+        role: Role.ADMIN,
+      });
 
-      await expect(strategy.validate(payload)).resolves.toEqual({
+      await expect(
+        strategy.validate({
+          sub: 42,
+          email: 'librarian@example.com',
+          role: Role.ADMIN,
+        }),
+      ).resolves.toEqual({
         userId: 42,
         email: 'librarian@example.com',
-        role: 'admin',
+        role: Role.ADMIN,
+      });
+
+      expect(userRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 42 },
       });
     });
 
-    it('should return undefined values when optional payload fields are missing', async () => {
-      await expect(strategy.validate({})).resolves.toEqual({
-        userId: undefined,
-        email: undefined,
-        role: undefined,
-      });
-    });
+    it('should throw UnauthorizedException when the user no longer exists', async () => {
+      userRepository.findOne.mockResolvedValue(null);
 
-    it('should ignore unrelated payload fields', async () => {
-      const payload = {
-        sub: 5,
-        email: 'member@example.com',
-        role: 'member',
-        permissions: ['borrow:books'],
-      };
-
-      const result = await strategy.validate(payload);
-
-      expect(result).toEqual({
-        userId: 5,
-        email: 'member@example.com',
-        role: 'member',
-      });
-      expect(result).not.toHaveProperty('permissions');
+      await expect(
+        strategy.validate({
+          sub: 7,
+          email: 'missing@example.com',
+          role: Role.MEMBER,
+        }),
+      ).rejects.toThrow(
+        new UnauthorizedException('User no longer exists'),
+      );
     });
   });
 });

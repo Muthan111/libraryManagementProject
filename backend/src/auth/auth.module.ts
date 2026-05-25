@@ -8,7 +8,8 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { LocalStrategy } from './local.strategy';
 import { SessionSerializer } from './session.serializer';
-
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { User } from '../user/user.entity';
 @Module({
   imports: [
     UserModule,
@@ -21,6 +22,7 @@ import { SessionSerializer } from './session.serializer';
         signOptions: { expiresIn: '60s' },
       }),
     }),
+    TypeOrmModule.forFeature([User]),
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, SessionSerializer],
   controllers: [AuthController],
