@@ -5,6 +5,7 @@ import {
   RequestMethod,
 } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { getEnvFilePaths } from './config/env-paths';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -24,6 +25,7 @@ import { PrometheusMiddleware } from '../src/common/middleware/prometheus.middle
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: getEnvFilePaths(),
     }),
     UserModule,
     TypeOrmModule.forRootAsync({

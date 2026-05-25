@@ -1,10 +1,10 @@
-import { IsNumber, IsDateString } from 'class-validator';
+import { IsDateString, IsString } from 'class-validator';
 
 export class BorrowBookDto {
-  @IsNumber()
+  @IsString()
   customerCode: string;
 
-  @IsNumber()
+  @IsString()
   bookCode: string;
 
   @IsDateString()

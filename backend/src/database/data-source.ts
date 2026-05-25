@@ -1,9 +1,11 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
-import { resolve } from 'path';
 import { DataSource } from 'typeorm';
+import { getEnvFilePaths } from '../config/env-paths';
 
-config({ path: resolve(__dirname, '../../.env') });
+for (const envFilePath of getEnvFilePaths()) {
+  config({ path: envFilePath, override: false });
+}
 
 export const AppDataSource = new DataSource({
   type: 'mysql',

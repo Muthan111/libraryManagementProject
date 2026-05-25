@@ -1,8 +1,10 @@
 import { config as loadEnv } from 'dotenv';
-import { resolve } from 'path';
 import { createClient } from 'redis';
+import { getEnvFilePaths } from './env-paths';
 
-loadEnv({ path: resolve(process.cwd(), '.env') });
+for (const envFilePath of getEnvFilePaths()) {
+  loadEnv({ path: envFilePath, override: false });
+}
 
 const redisHost = process.env.REDIS_HOST || '127.0.0.1';
 const redisPort = Number.parseInt(process.env.REDIS_PORT || '6379', 10);
@@ -25,6 +27,27 @@ redisClient.on('error', (err) => {
 });
 
 export async function connectRedis() {
+  if (redisClient.isOpen) {
+    return redisClient;
+  }
+
   await redisClient.connect();
   console.log('Connected to Redis');
+  return redisClient;
+}
+
+export async function disconnectRedis() {
+  if (!redisClient.isOpen) {
+    return;
+  }
+
+  await redisClient.quit();
+}
+
+export async function resetRedis() {
+  if (!redisClient.isOpen) {
+    return;
+  }
+
+  await redisClient.flushDb();
 }

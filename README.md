@@ -64,6 +64,22 @@ SESSION_SECRET=your_session_secret
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
+Create `backend/.env.test` for the real integration suite:
+
+```env
+NODE_ENV=test
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USERNAME=root
+DB_PASSWORD=test_password
+DB_NAME=library_test_db
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6380
+JWT_SECRET=integration_jwt_secret
+SESSION_SECRET=integration_session_secret
+GEMINI_API_KEY=test-key-not-used
+```
+
 Notes:
 
 - `SESSION_SECRET` is required at startup.
@@ -145,7 +161,22 @@ npm run test
 npm run test:watch
 npm run test:cov
 npm run test:ci
+npm run test:e2e
+npm run test:integration
+npm run test:integration:watch
+npm run test:all
 ```
+
+The integration test command now checks the dedicated MySQL and Redis services and will try to start them with Docker Compose if they are not already running. You can still start them yourself first if you prefer:
+
+```bash
+docker compose -f docker-compose.test.yml up -d
+
+cd backend
+npm run test:integration
+```
+
+If Docker Desktop is not running or your user cannot access the Docker daemon, the preflight step will stop early with a clear error before Jest starts.
 
 Playwright is also configured in the backend:
 
