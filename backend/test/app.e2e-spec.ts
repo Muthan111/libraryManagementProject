@@ -364,6 +364,55 @@ describe('Library API (e2e)', () => {
         PromptBuilder,
         RoutingPolicy,
         TimeoutService,
+        // Metric mocks to satisfy @InjectMetric in services (token names used by nestjs-prometheus)
+        {
+          provide: 'PROM_METRIC_HTTP_ERRORS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_HTTP_REQUESTS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_USER_CREATED_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_ACTIVE_USERS',
+          useValue: { inc: () => {}, set: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_BOOK_OPERATIONS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_BOOK_FETCH_REQUESTS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_AUTH_REQUESTS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_AUTH_FAILURES_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_CHATBOT_REQUESTS_TOTAL',
+          useValue: { inc: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_CHATBOT_RESPONSE_DURATION_SECONDS',
+          useValue: { startTimer: () => () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_MEMORY_USAGE_BYTES',
+          useValue: { set: () => {} },
+        },
+        {
+          provide: 'PROM_METRIC_CPU_USAGE_PERCENT',
+          useValue: { set: () => {} },
+        },
         {
           provide: getRepositoryToken(User),
           useValue: repositories.get(User),

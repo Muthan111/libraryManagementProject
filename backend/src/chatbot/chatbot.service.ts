@@ -1,32 +1,30 @@
 import { Injectable } from '@nestjs/common';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
+import { Counter, Gauge, Histogram } from 'prom-client';
 import { BookService } from '../book/book.service';
 import {
   ChatbotConversationStore,
   type ConversationHistoryEntry,
 } from './chatbot-conversation.store';
-import { ChatSessionFactory } from './chat-session.factory';
-import { ToolExecutor } from './tool-executor';
-import { PromptBuilder } from './prompt-builder';
-import { RoutingPolicy } from './routing-policy';
-import { TimeoutService } from './timeout.service';
 import {
-  ToolCall,
   ChatMessage,
   ChatReply,
-  ModelResponse,
   ChatSession,
+  ModelResponse,
+  ToolCall,
 } from './helperType';
-import {
-  DEFAULT_TIMEOUT_MS,
-  MAX_TOOL_ITERATIONS,
-  // INITIAL_PROMPT,
-  // HISTORY_SYSTEM_PROMPT,
-} from './chatVariables';
+import { PromptBuilder } from './prompt-builder';
 import { RagService } from './rag.service';
+import { RoutingPolicy } from './routing-policy';
+import { ChatSessionFactory } from './chat-session.factory';
+import { TimeoutService } from './timeout.service';
+import { ToolExecutor } from './tool-executor';
+import { DEFAULT_TIMEOUT_MS, MAX_TOOL_ITERATIONS } from './chatVariables';
 
 @Injectable()
 export class ChatbotService {
   private readonly timeoutMs: number;
+
   constructor(
     private readonly bookService: BookService,
     private readonly conversationStore: ChatbotConversationStore,
@@ -36,18 +34,24 @@ export class ChatbotService {
     private readonly promptBuilder: PromptBuilder,
     private readonly routingPolicy: RoutingPolicy,
     private readonly timeoutService: TimeoutService,
+    @InjectMetric('chatbot_requests_total')
+    private readonly chatbotRequestsCounter: Counter<string>,
+    @InjectMetric('chatbot_response_duration_seconds')
+    private readonly chatbotResponseDuration: Histogram<string>,
+    @InjectMetric('memory_usage_bytes')
+    private readonly memoryUsageGauge: Gauge<string>,
+    @InjectMetric('cpu_usage_percent')
+    private readonly cpuUsageGauge: Gauge<string>,
   ) {
     this.timeoutMs = this.resolveTimeoutMs();
   }
-  // routingPolicy handles tool-query decisions
 
   private async generateWithRAG(
     chat: ChatSession,
     message: string,
   ): Promise<string> {
     const ragResults = await this.ragService.search(message);
-
-    const context = ragResults.map((r) => r.text).join('\n\n');
+    const context = ragResults.map((result) => result.text).join('\n\n');
     const enrichedMessage = this.promptBuilder.buildRagEnrichedMessage(
       context,
       message,
@@ -58,16 +62,18 @@ export class ChatbotService {
       this.timeoutMs,
       'rag response generation',
     );
+
     console.log('RAG RESULTS:', ragResults);
     return result.response.text();
   }
+
   private async generateWithTools(
     chat: ChatSession,
     message: string,
   ): Promise<string> {
     let currentMessage: ChatMessage = message;
 
-    for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
       const result = await this.timeoutService.withTimeout(
         chat.sendMessage(currentMessage),
         this.timeoutMs,
@@ -81,7 +87,6 @@ export class ChatbotService {
       }
 
       const toolResult = await this.toolExecutor.run(toolCall);
-
       currentMessage = this.toolExecutor.buildFunctionResponseMessage(
         toolCall.name,
         toolResult,
@@ -90,30 +95,41 @@ export class ChatbotService {
 
     return 'No final response generated.';
   }
+
   async handleMessage(
     message: string,
     conversationId?: string,
   ): Promise<ChatReply> {
-    const resolvedConversationId =
-      await this.conversationStore.getOrCreateConversationId(conversationId);
-    const history = await this.conversationStore.loadHistory(
-      resolvedConversationId,
-    );
-    const chat = this.createChatSession(history);
+    this.chatbotRequestsCounter.inc();
+    const endTimer = this.chatbotResponseDuration.startTimer();
+    const startCpuUsage = process.cpuUsage();
+    const startTime = process.hrtime.bigint();
 
-    await this.sendInitialPrompt(chat, message);
+    try {
+      const resolvedConversationId =
+        await this.conversationStore.getOrCreateConversationId(conversationId);
+      const history = await this.conversationStore.loadHistory(
+        resolvedConversationId,
+      );
+      const chat = this.createChatSession(history);
 
-    const reply = await this.generateReply(chat, message);
-    await this.conversationStore.appendTurn(
-      resolvedConversationId,
-      message,
-      reply,
-    );
+      await this.sendInitialPrompt(chat, message);
 
-    return {
-      reply,
-      conversationId: resolvedConversationId,
-    };
+      const reply = await this.generateReply(chat, message);
+      await this.conversationStore.appendTurn(
+        resolvedConversationId,
+        message,
+        reply,
+      );
+
+      return {
+        reply,
+        conversationId: resolvedConversationId,
+      };
+    } finally {
+      endTimer();
+      this.recordSystemMetrics(startCpuUsage, startTime);
+    }
   }
 
   private createChatSession(history: ConversationHistoryEntry[]) {
@@ -136,7 +152,6 @@ export class ChatbotService {
     chat: ChatSession,
     message: string,
   ): Promise<string> {
-    // STEP 11: Decision layer (RAG vs Tools)
     const tool = this.routingPolicy.isToolQuery(message);
 
     if (tool && message.length < 80) {
@@ -157,6 +172,7 @@ export class ChatbotService {
 
     return extractedToolCall as ToolCall;
   }
+
   private resolveTimeoutMs(): number {
     const parsedTimeout = Number(process.env.CHATBOT_TIMEOUT_MS);
 
@@ -165,5 +181,22 @@ export class ChatbotService {
     }
 
     return DEFAULT_TIMEOUT_MS;
+  }
+
+  private recordSystemMetrics(
+    startCpuUsage: NodeJS.CpuUsage,
+    startTime: bigint,
+  ) {
+    const cpuUsage = process.cpuUsage(startCpuUsage);
+    const elapsedMicroseconds =
+      Number(process.hrtime.bigint() - startTime) / 1_000;
+    const cpuMicroseconds = cpuUsage.user + cpuUsage.system;
+
+    this.memoryUsageGauge.set(process.memoryUsage().heapUsed);
+    this.cpuUsageGauge.set(
+      elapsedMicroseconds > 0
+        ? (cpuMicroseconds / elapsedMicroseconds) * 100
+        : 0,
+    );
   }
 }

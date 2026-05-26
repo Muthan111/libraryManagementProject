@@ -8,6 +8,11 @@ import {
 } from './helpers/test-app';
 import { registerAndLoginUser } from './helpers/test-auth';
 
+const readMetricValue = (metrics: string, name: string) => {
+  const match = metrics.match(new RegExp(`^${name}\\s+([0-9.e+-]+)$`, 'm'));
+  return match ? Number(match[1]) : null;
+};
+
 describe('Book integration', () => {
   let app: INestApplication;
 
@@ -75,6 +80,15 @@ describe('Book integration', () => {
       .expect(({ body }) => {
         expect(body.name).toBe('1984');
       });
+
+    const metricsResponse = await request(app.getHttpServer()).get('/metrics');
+
+    expect(
+      readMetricValue(metricsResponse.text, 'book_operations_total'),
+    ).toBeGreaterThan(0);
+    expect(
+      readMetricValue(metricsResponse.text, 'book_fetch_requests_total'),
+    ).toBeGreaterThan(0);
   });
 
   it('allows admins to update and delete books while blocking members', async () => {
@@ -123,5 +137,11 @@ describe('Book integration', () => {
     expect(adminDeleteResponse.body.message).toContain(
       String(createResponse.body.bookid),
     );
+
+    const metricsResponse = await request(app.getHttpServer()).get('/metrics');
+
+    expect(
+      readMetricValue(metricsResponse.text, 'book_operations_total'),
+    ).toBeGreaterThan(0);
   });
 });

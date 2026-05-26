@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { Gauge } from 'prom-client';
 import { Role } from '../user/user.enum';
 import { AuthService } from './auth.service';
 
@@ -8,6 +9,9 @@ describe('AuthService', () => {
   let service: AuthService;
   let jwtService: Pick<JwtService, 'sign'>;
   let userRepository: { findOne: jest.Mock };
+  let authRequestsCounter: { inc: jest.Mock };
+  let authFailuresCounter: { inc: jest.Mock };
+  let activeUsersGauge: Pick<Gauge<string>, 'inc'>;
 
   beforeEach(() => {
     jwtService = {
@@ -18,7 +22,17 @@ describe('AuthService', () => {
       findOne: jest.fn(),
     };
 
-    service = new AuthService(userRepository as any, jwtService as JwtService);
+    authRequestsCounter = { inc: jest.fn() };
+    authFailuresCounter = { inc: jest.fn() };
+    activeUsersGauge = { inc: jest.fn() };
+
+    service = new AuthService(
+      userRepository as any,
+      jwtService as JwtService,
+      authRequestsCounter as any,
+      authFailuresCounter as any,
+      activeUsersGauge as any,
+    );
   });
 
   afterEach(() => {
@@ -56,6 +70,8 @@ describe('AuthService', () => {
         'plain-password',
         'hashed-password',
       );
+      expect(authRequestsCounter.inc).toHaveBeenCalledTimes(1);
+      expect(activeUsersGauge.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw UnauthorizedException when the password does not match', async () => {
@@ -71,6 +87,7 @@ describe('AuthService', () => {
       await expect(
         service.validateUser('reader@example.com', 'wrong-password'),
       ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+      expect(authFailuresCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw UnauthorizedException when the user is not found', async () => {
@@ -79,6 +96,7 @@ describe('AuthService', () => {
       await expect(
         service.validateUser('missing@example.com', 'plain-password'),
       ).rejects.toThrow(new UnauthorizedException('Invalid credentials'));
+      expect(authFailuresCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should propagate bcrypt failures', async () => {
@@ -96,6 +114,7 @@ describe('AuthService', () => {
       await expect(
         service.validateUser('broken@example.com', 'plain-password'),
       ).rejects.toThrow('bcrypt crash');
+      expect(authFailuresCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 

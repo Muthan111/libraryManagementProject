@@ -5,8 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
 import { Book } from '../book/book.entity';
 import { BorrowRecord } from './borrow.entity';
+import { MetricsModule } from '../metrics/metrics.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([BorrowRecord, User, Book])],
+  imports: [
+    TypeOrmModule.forFeature([BorrowRecord, User, Book]),
+    MetricsModule,
+  ],
   providers: [BorrowService],
   controllers: [BorrowController],
 })

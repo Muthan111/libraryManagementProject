@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getToken } from '@willsoto/nestjs-prometheus';
 import { Repository } from 'typeorm';
 import { Book } from '../book/book.entity';
 import { Role } from '../user/user.enum';
@@ -14,6 +15,8 @@ describe('BorrowService', () => {
   let borrowRepository: jest.Mocked<Partial<Repository<BorrowRecord>>>;
   let userRepository: jest.Mocked<Partial<Repository<User>>>;
   let bookRepository: jest.Mocked<Partial<Repository<Book>>>;
+  let bookOperationsCounter: { inc: jest.Mock };
+  let httpErrorsCounter: { inc: jest.Mock };
 
   const buildUser = (overrides: Partial<User> = {}): User =>
     ({
@@ -55,6 +58,9 @@ describe('BorrowService', () => {
     }) as BorrowRecord;
 
   beforeEach(async () => {
+    bookOperationsCounter = { inc: jest.fn() };
+    httpErrorsCounter = { inc: jest.fn() };
+
     borrowRepository = {
       findOne: jest.fn(),
       find: jest.fn(),
@@ -84,6 +90,14 @@ describe('BorrowService', () => {
         {
           provide: getRepositoryToken(Book),
           useValue: bookRepository,
+        },
+        {
+          provide: getToken('book_operations_total'),
+          useValue: bookOperationsCounter,
+        },
+        {
+          provide: getToken('http_errors_total'),
+          useValue: httpErrorsCounter,
         },
       ],
     }).compile();
@@ -142,6 +156,7 @@ describe('BorrowService', () => {
         status: BorrowStatus.BORROWED,
       });
       expect(borrowRepository.save).toHaveBeenCalledWith(createdBorrow);
+      expect(bookOperationsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when the user does not exist', async () => {
@@ -155,6 +170,7 @@ describe('BorrowService', () => {
         }),
       ).rejects.toThrow(new NotFoundException('User not found'));
       expect(bookRepository.findOne).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when the book does not exist', async () => {
@@ -169,6 +185,7 @@ describe('BorrowService', () => {
         }),
       ).rejects.toThrow(new NotFoundException('Book not found'));
       expect(borrowRepository.findOne).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when the book is already borrowed', async () => {
@@ -185,6 +202,7 @@ describe('BorrowService', () => {
       ).rejects.toThrow(new BadRequestException('Book is already borrowed'));
       expect(borrowRepository.create).not.toHaveBeenCalled();
       expect(borrowRepository.save).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should preserve the exact due date provided in the dto', async () => {
@@ -235,6 +253,7 @@ describe('BorrowService', () => {
       expect(result.status).toBe(BorrowStatus.RETURNED);
       expect(result.returnDate).toBeInstanceOf(Date);
       expect(borrowRepository.save).toHaveBeenCalledWith(borrow);
+      expect(bookOperationsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when the borrow record does not exist', async () => {
@@ -244,6 +263,7 @@ describe('BorrowService', () => {
         new NotFoundException('Borrow record not found'),
       );
       expect(borrowRepository.save).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw when the book was already returned', async () => {
@@ -258,6 +278,7 @@ describe('BorrowService', () => {
         new BadRequestException('Book already returned'),
       );
       expect(borrowRepository.save).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 

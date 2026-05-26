@@ -9,6 +9,11 @@ import {
 } from './helpers/test-app';
 import { registerAndLoginUser } from './helpers/test-auth';
 
+const readMetricValue = (metrics: string, name: string) => {
+  const match = metrics.match(new RegExp(`^${name}\\s+([0-9.e+-]+)$`, 'm'));
+  return match ? Number(match[1]) : null;
+};
+
 describe('Borrow integration', () => {
   let app: INestApplication;
 
@@ -90,5 +95,14 @@ describe('Borrow integration', () => {
     );
 
     expect(duplicateReturnResponse.status).toBe(400);
+
+    const metricsResponse = await request(app.getHttpServer()).get('/metrics');
+
+    expect(
+      readMetricValue(metricsResponse.text, 'book_operations_total'),
+    ).toBeGreaterThan(0);
+    expect(
+      readMetricValue(metricsResponse.text, 'http_errors_total'),
+    ).toBeGreaterThan(0);
   });
 });

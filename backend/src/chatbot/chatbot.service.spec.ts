@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RequestTimeoutException } from '@nestjs/common';
+import { getToken } from '@willsoto/nestjs-prometheus';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { BookService } from '../book/book.service';
 import { ChatbotService } from './chatbot.service';
@@ -48,6 +49,10 @@ describe('ChatbotService', () => {
   let routingPolicy: {
     isToolQuery: jest.Mock;
   };
+  let chatbotRequestsCounter: { inc: jest.Mock };
+  let chatbotResponseDuration: { startTimer: jest.Mock };
+  let memoryUsageGauge: { set: jest.Mock };
+  let cpuUsageGauge: { set: jest.Mock };
 
   const originalTimeout = process.env.CHATBOT_TIMEOUT_MS;
 
@@ -90,6 +95,22 @@ describe('ChatbotService', () => {
       isToolQuery: jest.fn(),
     };
 
+    chatbotRequestsCounter = {
+      inc: jest.fn(),
+    };
+
+    chatbotResponseDuration = {
+      startTimer: jest.fn(() => jest.fn()),
+    };
+
+    memoryUsageGauge = {
+      set: jest.fn(),
+    };
+
+    cpuUsageGauge = {
+      set: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatbotService,
@@ -113,6 +134,22 @@ describe('ChatbotService', () => {
         ToolExecutor,
         PromptBuilder,
         TimeoutService,
+        {
+          provide: getToken('chatbot_requests_total'),
+          useValue: chatbotRequestsCounter,
+        },
+        {
+          provide: getToken('chatbot_response_duration_seconds'),
+          useValue: chatbotResponseDuration,
+        },
+        {
+          provide: getToken('memory_usage_bytes'),
+          useValue: memoryUsageGauge,
+        },
+        {
+          provide: getToken('cpu_usage_percent'),
+          useValue: cpuUsageGauge,
+        },
       ],
     }).compile();
 
@@ -188,6 +225,10 @@ describe('ChatbotService', () => {
       'hello',
       'Direct Gemini reply',
     );
+    expect(chatbotRequestsCounter.inc).toHaveBeenCalledTimes(1);
+    expect(chatbotResponseDuration.startTimer).toHaveBeenCalledTimes(1);
+    expect(memoryUsageGauge.set).toHaveBeenCalledTimes(1);
+    expect(cpuUsageGauge.set).toHaveBeenCalledTimes(1);
   });
 
   it('uses the books tool and returns the follow-up response', async () => {
@@ -532,6 +573,22 @@ describe('ChatbotService', () => {
         ToolExecutor,
         PromptBuilder,
         TimeoutService,
+        {
+          provide: getToken('chatbot_requests_total'),
+          useValue: chatbotRequestsCounter,
+        },
+        {
+          provide: getToken('chatbot_response_duration_seconds'),
+          useValue: chatbotResponseDuration,
+        },
+        {
+          provide: getToken('memory_usage_bytes'),
+          useValue: memoryUsageGauge,
+        },
+        {
+          provide: getToken('cpu_usage_percent'),
+          useValue: cpuUsageGauge,
+        },
       ],
     }).compile();
 

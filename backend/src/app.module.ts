@@ -21,6 +21,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { MetricsModule } from './metrics/metrics.module';
 import { PrometheusMiddleware } from '../src/common/middleware/prometheus.middleware';
+import { LokiMiddleware } from './common/middleware/LokiMiddleware';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -70,7 +71,12 @@ export class AppModule implements NestModule {
     consumer
       .apply(PrometheusMiddleware)
       .exclude({ path: 'metrics', method: RequestMethod.GET })
-      .exclude({ path: 'driver/login', method: RequestMethod.POST })
+      .exclude({ path: 'api', method: RequestMethod.GET })
+      .exclude({ path: 'api/live/ws', method: RequestMethod.GET })
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+    consumer
+      .apply(LokiMiddleware)
+      .exclude({ path: 'metrics', method: RequestMethod.GET })
       .exclude({ path: 'api', method: RequestMethod.GET })
       .exclude({ path: 'api/live/ws', method: RequestMethod.GET })
       .forRoutes({ path: '*', method: RequestMethod.ALL });

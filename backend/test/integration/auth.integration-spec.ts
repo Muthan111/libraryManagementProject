@@ -8,6 +8,11 @@ import {
 } from './helpers/test-app';
 import { registerAndLoginUser } from './helpers/test-auth';
 
+const readMetricValue = (metrics: string, name: string) => {
+  const match = metrics.match(new RegExp(`^${name}\\s+([0-9.e+-]+)$`, 'm'));
+  return match ? Number(match[1]) : null;
+};
+
 describe('Auth integration', () => {
   let app: INestApplication;
 
@@ -57,6 +62,13 @@ describe('Auth integration', () => {
 
     expect(loginResponse.status).toBe(201);
     expect(loginResponse.body.access_token).toEqual(expect.any(String));
+
+    const metricsResponse = await request(app.getHttpServer()).get('/metrics');
+
+    expect(readMetricValue(metricsResponse.text, 'user_created_total')).toBe(1);
+    expect(
+      readMetricValue(metricsResponse.text, 'auth_requests_total'),
+    ).toBeGreaterThan(0);
   });
 
   it('rejects invalid credentials and invalid payloads', async () => {
@@ -86,6 +98,12 @@ describe('Auth integration', () => {
       });
 
     expect(invalidPayloadResponse.status).toBe(400);
+
+    const metricsResponse = await request(app.getHttpServer()).get('/metrics');
+
+    expect(
+      readMetricValue(metricsResponse.text, 'auth_failures_total'),
+    ).toBeGreaterThan(0);
   });
 
   it('blocks members from admin-only routes and exposes metrics', async () => {
@@ -105,5 +123,8 @@ describe('Auth integration', () => {
 
     expect(metricsResponse.status).toBe(200);
     expect(metricsResponse.text).toContain('process_cpu_user_seconds_total');
+    expect(
+      readMetricValue(metricsResponse.text, 'http_requests_total'),
+    ).toBeGreaterThan(0);
   });
 });

@@ -10,6 +10,7 @@ import { LocalStrategy } from './local.strategy';
 import { SessionSerializer } from './session.serializer';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
+import { MetricsModule } from '../metrics/metrics.module';
 @Module({
   imports: [
     UserModule,
@@ -23,6 +24,7 @@ import { User } from '../user/user.entity';
       }),
     }),
     TypeOrmModule.forFeature([User]),
+    MetricsModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy, SessionSerializer],
   controllers: [AuthController],

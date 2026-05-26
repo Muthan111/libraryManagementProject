@@ -9,6 +9,7 @@ jest.mock(
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getToken } from '@willsoto/nestjs-prometheus';
 import { DeleteResult, Repository, DataSource } from 'typeorm';
 import { Book } from './book.entity';
 import { BookService } from './book.service';
@@ -20,6 +21,9 @@ describe('BookService', () => {
   let service: BookService;
   let bookRepository: jest.Mocked<Partial<Repository<Book>>>;
   let dataSource: jest.Mocked<Partial<DataSource>>;
+  let bookOperationsCounter: { inc: jest.Mock };
+  let bookFetchRequestsCounter: { inc: jest.Mock };
+  let httpErrorsCounter: { inc: jest.Mock };
 
   const buildBook = (overrides: Partial<Book> = {}): Book =>
     ({
@@ -35,6 +39,10 @@ describe('BookService', () => {
     }) as Book;
 
   beforeEach(async () => {
+    bookOperationsCounter = { inc: jest.fn() };
+    bookFetchRequestsCounter = { inc: jest.fn() };
+    httpErrorsCounter = { inc: jest.fn() };
+
     bookRepository = {
       findAndCount: jest.fn(),
       findOne: jest.fn(),
@@ -63,6 +71,18 @@ describe('BookService', () => {
           provide: DataSource,
           useValue: dataSource,
         },
+        {
+          provide: getToken('book_operations_total'),
+          useValue: bookOperationsCounter,
+        },
+        {
+          provide: getToken('book_fetch_requests_total'),
+          useValue: bookFetchRequestsCounter,
+        },
+        {
+          provide: getToken('http_errors_total'),
+          useValue: httpErrorsCounter,
+        },
       ],
     }).compile();
 
@@ -88,6 +108,7 @@ describe('BookService', () => {
           totalPages: 1,
         },
       });
+      expect(bookFetchRequestsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should return an empty page when no books exist', async () => {
@@ -107,6 +128,7 @@ describe('BookService', () => {
     it('should handle repository errors', async () => {
       bookRepository.findAndCount!.mockRejectedValue(new Error('db crash'));
       await expect(service.findAll()).rejects.toThrow();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should normalize invalid pagination values', async () => {
@@ -144,6 +166,7 @@ describe('BookService', () => {
       expect(bookRepository.create).toHaveBeenCalledWith(dto);
       expect(generateCode).toHaveBeenCalledWith('BK-XXXX-####');
       expect(bookRepository.save).toHaveBeenCalledWith(created);
+      expect(bookOperationsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw on duplicate ISBN', async () => {
@@ -195,6 +218,7 @@ describe('BookService', () => {
         ...existing,
         ...update,
       });
+      expect(bookOperationsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should only update provided fields', async () => {
@@ -253,6 +277,7 @@ describe('BookService', () => {
       bookRepository.delete!.mockResolvedValue({ affected: 0 } as DeleteResult);
 
       await expect(service.delete(1)).rejects.toThrow(NotFoundException);
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should handle repository crash', async () => {
@@ -286,6 +311,7 @@ describe('BookService', () => {
       await expect(service.findBookByName('x')).rejects.toThrow(
         new NotFoundException('Error finding book by name'),
       );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -311,6 +337,7 @@ describe('BookService', () => {
       await expect(service.findBookByISBN('x')).rejects.toThrow(
         new NotFoundException('Error finding book by ISBN'),
       );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -338,6 +365,7 @@ describe('BookService', () => {
       await expect(service.findBookByAuthor('x')).rejects.toThrow(
         new NotFoundException('Error finding book by author'),
       );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 });

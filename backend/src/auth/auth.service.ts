@@ -1,18 +1,27 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import * as bcrypt from 'bcrypt';
+import { Counter, Gauge } from 'prom-client';
+import { Repository } from 'typeorm';
 import { User } from 'src/user/user.entity';
 import { AuthUser } from './authType';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+
 @Injectable()
-// ❗ No rate limiting / brute-force protection logic- Implemented as a global level
+// No rate limiting / brute-force protection logic- Implemented as a global level
 export class AuthService {
   // Injects user lookup and JWT utilities used during authentication.
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
+    @InjectMetric('auth_requests_total')
+    private readonly authRequestsCounter: Counter<string>,
+    @InjectMetric('auth_failures_total')
+    private readonly authFailuresCounter: Counter<string>,
+    @InjectMetric('active_users')
+    private readonly activeUsersGauge: Gauge<string>,
   ) {}
 
   // Validates user credentials and returns a sanitized user object on success.
@@ -20,44 +29,45 @@ export class AuthService {
     email: string,
     password: string,
   ): Promise<AuthUser | null> {
-    // BUG: You are logging sensitive user authentication data -solved
-    // BUG: ❗ validateUser returns inconsistent type (any + null)
-    // BUG: ❗ Returning full user object then deleting password is unsafe pattern
-    // BUG: ❗ Missing guard against null password hashing edge cases
-    const user = await this.userRepository.findOne({ where: { email } });
+    this.authRequestsCounter.inc();
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+    try {
+      const user = await this.userRepository.findOne({ where: { email } });
+
+      if (!user) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+
+      if (!isMatch) {
+        throw new UnauthorizedException('Invalid credentials');
+      }
+
+      this.activeUsersGauge.inc();
+
+      return {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+    } catch (error) {
+      this.authFailuresCounter.inc();
+      throw error;
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-    // BUG: ❗ bcrypt compare is correct but unoptimized
-    const final = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-    };
-    return final;
-    // BUG: ❗ validateUser should NOT return null silently -solved
   }
 
   // Creates a signed JWT payload for an authenticated user.
   async login(user: AuthUser) {
-    // BUG:❗ JWT payload uses sub correctly BUT lacks expiration control here
     const payload = {
-      sub: user.id, // standard practice
+      sub: user.id,
       email: user.email,
-      role: user.role, // include role in the payload
+      role: user.role,
     };
     const token = this.jwtService.sign(payload);
+
     return {
       access_token: token,
     };
   }
-
-  // Returns a simple success message for authenticated test requests.
 }

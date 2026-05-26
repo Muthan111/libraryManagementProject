@@ -1,7 +1,10 @@
 /node_modules
 /dist
 .env
-
+.env.test
+.vscode
+launch.json
+settings.json
 # Playwright
 node_modules/
 /test-results/

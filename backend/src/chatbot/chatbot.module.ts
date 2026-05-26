@@ -11,8 +11,9 @@ import { RoutingPolicy } from './routing-policy';
 import { TimeoutService } from './timeout.service';
 import { RagController } from './rag.seed.controller';
 import { RagSeeder } from './rag.seed';
+import { MetricsModule } from '../metrics/metrics.module';
 @Module({
-  imports: [BookModule],
+  imports: [BookModule, MetricsModule],
 
   providers: [
     ChatbotService,

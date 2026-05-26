@@ -20,6 +20,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getToken } from '@willsoto/nestjs-prometheus';
 import {
   DataSource,
   DeleteResult,
@@ -27,6 +28,7 @@ import {
   Repository,
 } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { Gauge } from 'prom-client';
 import { UserService } from './user.service';
 import { User } from './user.entity';
 import { CreateUserDto } from './createUser.dto';
@@ -35,6 +37,10 @@ import { Role } from './user.enum';
 describe('UserService', () => {
   let service: UserService;
   let repository: jest.Mocked<Partial<Repository<User>>>;
+  let httpErrorsCounter: { inc: jest.Mock };
+  let httpRequestsCounter: { inc: jest.Mock };
+  let userCreatedCounter: { inc: jest.Mock };
+  let activeUsersGauge: Pick<Gauge<string>, 'set'>;
 
   const buildUser = (overrides: Partial<User> = {}): User => ({
     id: 1,
@@ -63,6 +69,22 @@ describe('UserService', () => {
 
   beforeEach(async () => {
     (generateCode as jest.Mock).mockReset();
+
+    httpErrorsCounter = {
+      inc: jest.fn(),
+    };
+
+    httpRequestsCounter = {
+      inc: jest.fn(),
+    };
+
+    userCreatedCounter = {
+      inc: jest.fn(),
+    };
+
+    activeUsersGauge = {
+      set: jest.fn(),
+    };
 
     repository = {
       findAndCount: jest.fn(),
@@ -100,6 +122,22 @@ describe('UserService', () => {
           provide: DataSource,
           useValue: dataSource,
         },
+        {
+          provide: getToken('http_errors_total'),
+          useValue: httpErrorsCounter,
+        },
+        {
+          provide: getToken('http_requests_total'),
+          useValue: httpRequestsCounter,
+        },
+        {
+          provide: getToken('user_created_total'),
+          useValue: userCreatedCounter,
+        },
+        {
+          provide: getToken('active_users'),
+          useValue: activeUsersGauge,
+        },
       ],
     }).compile();
 
@@ -131,6 +169,8 @@ describe('UserService', () => {
         skip: 0,
         take: 10,
       });
+      expect(httpRequestsCounter.inc).toHaveBeenCalledTimes(1);
+      expect(activeUsersGauge.set).toHaveBeenCalledWith(1);
     });
 
     it('should return empty array when no users exist', async () => {
@@ -168,6 +208,17 @@ describe('UserService', () => {
         take: 1,
       });
     });
+
+    it('should cap limit at 100', async () => {
+      repository.findAndCount!.mockResolvedValue([[], 0]);
+
+      await service.findAll(1, 500);
+
+      expect(repository.findAndCount).toHaveBeenCalledWith({
+        skip: 0,
+        take: 100,
+      });
+    });
   });
 
   describe('create', () => {
@@ -203,6 +254,7 @@ describe('UserService', () => {
       });
       expect(transactionRepository.save).toHaveBeenCalledTimes(1);
       expect(transactionRepository.save).toHaveBeenCalledWith(createdUser);
+      expect(userCreatedCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw ConflictException when email exists', async () => {
@@ -221,6 +273,7 @@ describe('UserService', () => {
       expect(hashSpy).not.toHaveBeenCalled();
       expect(transactionRepository.create).not.toHaveBeenCalled();
       expect(transactionRepository.save).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should propagate repository save errors', async () => {
@@ -238,10 +291,11 @@ describe('UserService', () => {
       transactionRepository.save.mockRejectedValue(new Error('save failed'));
 
       await expect(service.create(dto)).rejects.toThrow('save failed');
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should propagate bcrypt errors', async () => {
-      repository.findOne!.mockResolvedValue(null);
+      transactionRepository.findOne.mockResolvedValue(null);
 
       jest
         .spyOn(bcrypt, 'hash')
@@ -255,8 +309,9 @@ describe('UserService', () => {
           role: Role.MEMBER,
         }),
       ).rejects.toThrow('bcrypt failed');
-      expect(repository.create).not.toHaveBeenCalled();
-      expect(repository.save).not.toHaveBeenCalled();
+      expect(transactionRepository.create).not.toHaveBeenCalled();
+      expect(transactionRepository.save).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -310,6 +365,7 @@ describe('UserService', () => {
         BadRequestException,
       );
       expect(repository.update).not.toHaveBeenCalled();
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should throw NotFoundException when user not found', async () => {
@@ -348,6 +404,7 @@ describe('UserService', () => {
       await expect(service.findUserByCustomerCode('cus999')).rejects.toThrow(
         NotFoundException,
       );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -384,6 +441,7 @@ describe('UserService', () => {
       await expect(service.deleteUserByCustomerCode('cus999')).rejects.toThrow(
         NotFoundException,
       );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
 
     it('should call delete with correct payload', async () => {
