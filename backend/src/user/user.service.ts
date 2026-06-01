@@ -200,9 +200,7 @@ export class UserService {
       });
 
       if (!existingUser) {
-        // BUG: findUserByEmail returns null inconsistently
-        // TODO: CHOOSE A CONSISTENT APPROACH:
-        return null;
+        throw new NotFoundException('User not found');
       }
 
       return existingUser;

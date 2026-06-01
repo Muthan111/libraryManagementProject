@@ -215,6 +215,28 @@ No `@UseGuards(JwtAuthGuard)` or equivalent protection is applied to those busin
 
 ## Severity: High
 
+## Addendum — 2026-05-27: Recent service/spec changes
+
+During a recent review of the `backend/src` tree several inline `BUG:` comments and test changes were discovered that are not fully reflected in this register. The items below summarize what I found and recommended next actions so the register stays useful and actionable.
+
+- **Files scanned:** 26 spec files and all service files under `backend/src` (unit and controller specs present).
+
+- **BookService — create():** A `// BUG: Double-save pattern in create()` comment exists in `backend/src/book/book.service.ts`. The current implementation uses `dataSource.transaction(...)` and calls `bookRepository.save(...)` once inside the transaction, but the comment indicates a historical double-save pattern. Action: review `create()` call sites and tests to confirm no duplicate persistence occurs; if the comment is stale, remove it.
+
+- **BookService — delete():** A `// BUG: delete() does not check soft delete possibility` comment exists. The controller deletes by numeric id (`DELETE /book/:id`) while entities may be soft-deletable. Action: decide whether to switch to `softRemove`/`softDelete` or to explicitly document the destructive behavior; update controller, service and tests accordingly.
+
+- **UserService — inconsistent ID usage comment:** `// BUG: inconsistent ID usage vs customerCode usage` appears at the top of `backend/src/user/user.service.ts`. The service currently consistently uses `customerCode` in create/update/find flows. Action: verify controllers and tests use `customerCode` (not numeric id); if consistent, remove the stale comment from source and the register.
+
+- **Spec files:** There are 26 `.spec.ts` files across `auth`, `book`, `borrow`, `chatbot`, `user`, and common modules. Many tests mock or spy on service methods by name/signature — changes to service method parameters or return contracts can break tests. Action: run the unit test suite and update mocks/expectations for any changed signatures (notably `create`, `update`, `delete` variations across services).
+
+- **General recommendation:**
+  - Run `yarn test:unit` (or the repo's test command) and capture failing specs. Update this register with concrete failing test names and stack traces to triage fixes.
+  - Triage each `BUG:` comment in-place: mark as `Solved` if code already addresses it, or `Unsolved` with clear remediation steps.
+
+## Status of this addendum
+
+- Triage required: Please approve running unit tests and marking comments as either "stale" (remove) or "action required" (create concrete issues/PRs).
+
 # Software Bug 9: `AuthService` still leaks data and uses weak contracts
 
 ## Problem
@@ -414,12 +436,14 @@ Keep the solved improvements, then add rate limiting, safer tool-response shapin
 ## Implementation
 
 Solved in current code:
+
 - Timeout protection exists through `withTimeout()`.
 - Conversation persistence exists through `ChatbotConversationStore`.
 - Multi-step tool handling exists through `MAX_TOOL_ITERATIONS`.
 - Testability improved through dependency injection and unit tests.
 
 Still open in current code:
+
 - No request rate limiting around chat entry points.
 - No service-level catch/translation for Gemini provider failures.
 - Tool responses are passed back to the model with minimal output filtering.

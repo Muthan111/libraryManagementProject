@@ -152,6 +152,7 @@ export class BookController {
   async findBookByName(@Param('name') name: string) {
     return this.bookService.findBookByName(name);
   }
+
   @ApiOperation({ summary: 'search books by isbn' })
   @ApiParam({ name: 'isbn', type: 'string' })
   @ApiResponse({
@@ -175,5 +176,18 @@ export class BookController {
   // Looks up a single book by the author's name.
   async findBookByAuthor(@Param('author') author: string) {
     return this.bookService.findBookByAuthor(author);
+  }
+
+  @ApiOperation({ summary: 'search books by code' })
+  @ApiParam({ name: 'bookCode', type: 'string' })
+  @ApiResponse({
+    status: 200,
+    description: 'Book lookup by code completed successfully.',
+  })
+  @ApiResponse({ status: 404, description: 'Book not found.' })
+  @Get(':bookCode')
+  // Looks up a single book by its generated book code.
+  async findBookByCode(@Param('bookCode') bookCode: string) {
+    return this.bookService.findBookByCode(bookCode);
   }
 }

@@ -315,6 +315,37 @@ describe('BookService', () => {
     });
   });
 
+  // ---------------- FIND BY CODE ----------------
+  describe('findBookByCode', () => {
+    it('should return book', async () => {
+      const book = buildBook({ bookCode: 'BK-ABCD-1234' });
+
+      bookRepository.findOne!.mockResolvedValue(book);
+
+      await expect(service.findBookByCode('BK-ABCD-1234')).resolves.toEqual(
+        book,
+      );
+      expect(bookRepository.findOne).toHaveBeenCalledWith({
+        where: { bookCode: 'BK-ABCD-1234' },
+      });
+    });
+
+    it('should return null', async () => {
+      bookRepository.findOne!.mockResolvedValue(null);
+
+      await expect(service.findBookByCode('x')).resolves.toBeNull();
+    });
+
+    it('should throw not found exception on repository error', async () => {
+      bookRepository.findOne!.mockRejectedValue(new Error('lookup failed'));
+
+      await expect(service.findBookByCode('x')).rejects.toThrow(
+        new NotFoundException('Error finding book by code'),
+      );
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ---------------- FIND BY ISBN ----------------
   describe('findBookByISBN', () => {
     it('should return book', async () => {

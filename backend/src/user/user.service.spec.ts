@@ -417,12 +417,13 @@ describe('UserService', () => {
       ).resolves.toBeDefined();
     });
 
-    it('should return null when not found', async () => {
+    it('should throw when not found', async () => {
       repository.findOne!.mockResolvedValue(null);
 
       await expect(
         service.findUserByEmail('missing@example.com'),
-      ).resolves.toBeNull();
+      ).rejects.toThrow(NotFoundException);
+      expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
   });
 

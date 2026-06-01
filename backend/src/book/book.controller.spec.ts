@@ -28,6 +28,7 @@ describe('BookController', () => {
     update: jest.Mock;
     delete: jest.Mock;
     findBookByName: jest.Mock;
+    findBookByCode: jest.Mock;
     findBookByISBN: jest.Mock;
     findBookByAuthor: jest.Mock;
   };
@@ -39,6 +40,7 @@ describe('BookController', () => {
       update: jest.fn(),
       delete: jest.fn(),
       findBookByName: jest.fn(),
+      findBookByCode: jest.fn(),
       findBookByISBN: jest.fn(),
       findBookByAuthor: jest.fn(),
     };
@@ -241,6 +243,29 @@ describe('BookController', () => {
       service.findBookByAuthor.mockRejectedValue(new Error('fail'));
 
       await expect(controller.findBookByAuthor('x')).rejects.toThrow('fail');
+    });
+  });
+
+  // ---------------- FIND BY CODE ----------------
+  describe('findBookByCode', () => {
+    it('should return book by code', async () => {
+      const book = { bookid: 1, bookCode: 'BK001' };
+      service.findBookByCode.mockResolvedValue(book);
+
+      await expect(controller.findBookByCode('BK001')).resolves.toEqual(book);
+      expect(service.findBookByCode).toHaveBeenCalledWith('BK001');
+    });
+
+    it('should return null if not found', async () => {
+      service.findBookByCode.mockResolvedValue(null);
+
+      await expect(controller.findBookByCode('unknown')).resolves.toBeNull();
+    });
+
+    it('should propagate errors', async () => {
+      service.findBookByCode.mockRejectedValue(new Error('fail'));
+
+      await expect(controller.findBookByCode('x')).rejects.toThrow('fail');
     });
   });
 });

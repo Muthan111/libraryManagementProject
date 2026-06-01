@@ -1,6 +1,29 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { getToken, parseJwt, removeToken } from "../utils/auth";
 
 const Navbar = () => {
+  const [user, setUser] = useState<{ email?: string; role?: string } | null>(
+    null,
+  );
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      const payload: any = parseJwt(token);
+      setUser({ email: payload?.email, role: payload?.role });
+    } else {
+      setUser(null);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    removeToken();
+    setUser(null);
+    navigate("/");
+  };
+
   return (
     <nav className="top-nav" aria-label="Primary">
       <div className="brand-block">
@@ -13,17 +36,35 @@ const Navbar = () => {
 
       <div className="nav-links">
         <li>
-          <Link to="/frontend/src/components/Home.tsx">Home</Link>
+          <Link to="/">Home</Link>
         </li>
         <li>
-          <Link to="/frontend/src/pages/book.tsx">Books</Link>
+          <Link to="/books">Books</Link>
         </li>
         <li>
-          <Link to="/frontend/src/pages/borrowedBooks.tsx">Borrowed Books</Link>
+          <Link to="/books/borrowed">Borrowed Books</Link>
         </li>
         <li>
           <Link to="/frontend/src/pages/profile.tsx">Profile</Link>
         </li>
+        {user ? (
+          <>
+            <li className="nav-user">
+              <span>
+                {user.email || "Member"} {user.role ? `(${user.role})` : ""}
+              </span>
+            </li>
+            <li>
+              <button className="link-button" onClick={handleLogout}>
+                Logout
+              </button>
+            </li>
+          </>
+        ) : (
+          <li>
+            <Link to="/login">Login</Link>
+          </li>
+        )}
       </div>
     </nav>
   );

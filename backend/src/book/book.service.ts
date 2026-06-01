@@ -179,6 +179,19 @@ export class BookService {
     }
   }
 
+  async findBookByCode(bookCode: string) {
+    this.bookFetchRequestsCounter.inc();
+
+    try {
+      return await this.bookRepository.findOne({
+        where: { bookCode },
+      });
+    } catch {
+      this.httpErrorsCounter.inc();
+      throw new NotFoundException('Error finding book by code');
+    }
+  }
+
   // Finds a book by ISBN and surfaces a lookup error if one occurs.
   async findBookByISBN(ISBN: string) {
     this.bookFetchRequestsCounter.inc();

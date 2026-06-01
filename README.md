@@ -34,12 +34,16 @@ Full-stack library management project with a `NestJS` backend, a `React + Vite` 
 libraryManagementProject/
   backend/
     src/
+      appSetup/
       auth/
       book/
       borrow/
       chatbot/
       common/
+      config/
+      database/
       metrics/
+      migrations/
       user/
   frontend/
     src/
@@ -51,7 +55,7 @@ libraryManagementProject/
 
 ## Environment Variables
 
-Create `backend/.env` for local backend and Docker Compose usage.
+Create `backend/.env` for local backend usage.
 
 ```env
 DB_HOST=localhost
@@ -62,6 +66,8 @@ DB_NAME=library_db
 JWT_SECRET=your_jwt_secret
 SESSION_SECRET=your_session_secret
 GEMINI_API_KEY=your_gemini_api_key
+REDIS_HOST=localhost
+REDIS_PORT=6379
 ```
 
 Create `backend/.env.test` for the real integration suite:
@@ -80,12 +86,27 @@ SESSION_SECRET=integration_session_secret
 GEMINI_API_KEY=test-key-not-used
 ```
 
+Create `backend/.env.prod` for docker Compose usage.
+
+```env
+DB_HOST=mysql
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=your_password
+DB_NAME=library_db
+JWT_SECRET=your_jwt_secret
+SESSION_SECRET=your_session_secret
+GEMINI_API_KEY=your_gemini_api_key
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+```
+
 Notes:
 
 - `SESSION_SECRET` is required at startup.
 - `JWT_SECRET` falls back to `secret` in code if omitted, but you should still set it explicitly.
 - `GEMINI_API_KEY` is required if you want the `/chat` endpoint to work.
-- When running with Docker Compose, `DB_HOST` should match the MySQL service hostname used by the containers.
 
 ## Local Development
 
@@ -165,6 +186,11 @@ npm run test:e2e
 npm run test:integration
 npm run test:integration:watch
 npm run test:all
+npm run typeorm
+npm run migration:generate
+npm run migration:create
+npm run migration:run
+npm run migration:revert
 ```
 
 The integration test command now checks the dedicated MySQL and Redis services and will try to start them with Docker Compose if they are not already running. You can still start them yourself first if you prefer:
@@ -366,7 +392,6 @@ This workflow:
 - TypeORM currently uses `synchronize: true`, which is convenient for development but should be reviewed before production use.
 - CORS is currently enabled without a restricted origin list.
 - The frontend is currently a minimal page that fetches the backend root route and renders the response.
-- Some routes such as `DELETE /user` are powerful development endpoints and should be protected before production deployment.
 
 ## License
 
