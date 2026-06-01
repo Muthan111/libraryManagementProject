@@ -2,6 +2,7 @@
 /dist
 .env
 .env.test
+.env.prod
 .vscode
 launch.json
 settings.json

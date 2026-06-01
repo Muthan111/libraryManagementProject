@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Library Management Backend Module Documentation</title>
+    <style>
+      :root{--bg:#f7f9fb;--card:#ffffff;--muted:#667085;--text:#111827;--accent:#0f62fe;--line:#e6eef8;--code:#f1f5f9}
+      html,body{height:100%}
+      body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--text)}
+      .wrap{max-width:1120px;margin:28px auto;padding:24px}
+      header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px}
+      h1{font-size:1.5rem;margin:0}
+      h2{font-size:1.25rem;margin:0 0 8px}
+      h3{font-size:1.05rem;margin:18px 0 8px}
+      h4{font-size:1rem;margin:0 0 6px}
+      p{line-height:1.55}
+      p.lead{color:var(--muted);margin:6px 0 0}
+      nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+      nav a{color:var(--accent);text-decoration:none;padding:8px 10px;border-radius:6px;border:1px solid transparent}
+      nav a:hover{background:rgba(15,98,254,0.06);border-color:rgba(15,98,254,0.12)}
+      section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(15,23,42,0.04)}
+      .module-grid{display:grid;grid-template-columns:minmax(280px,520px) 1fr;gap:22px;align-items:start}
+      .thumb{width:100%;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:#fff}
+      .thumb img{display:block;width:100%;height:auto}
+      .no-image{min-height:180px;display:flex;align-items:center;justify-content:center;color:var(--muted);background:linear-gradient(135deg,#f8fafc,#eef4ff)}
+      ul{margin:8px 0 0;padding-left:20px;color:#1f2937}
+      li{margin-bottom:6px;line-height:1.45}
+      .components{columns:2}
+      .functions{margin-top:14px}
+      .function{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+      .function p{margin:6px 0;color:#1f2937}
+      code{background:var(--code);padding:2px 6px;border-radius:6px;font-size:0.95em}
+      pre{background:#0b1220;color:#f8fafc;border-radius:8px;padding:12px;overflow:auto;font-size:0.9rem;line-height:1.45}
+      @media (max-width:920px){header{display:block}nav{justify-content:flex-start;margin-top:12px}.module-grid{grid-template-columns:1fr}.components{columns:1}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Library Management Backend Module Documentation</h1>
+          <p class="lead">Module summaries, component lists, and explained service functions for the main backend modules.</p>
+        </div>
+        <nav aria-label="Quick links">
+          <a href="#user">User</a>
+          <a href="#auth">Auth</a>
+          <a href="#borrow">Borrow</a>
+          <a href="#book">Book</a>
+          <a href="#chatbot">Chatbot</a>
+          <a href="#app-factory">App Factory</a>
+        </nav>
+      </header>
+
+      <section id="user">
+        <div class="module-grid">
+          <div class="thumb"><img src="user_module.jpg" alt="User Module Diagram"></div>
+          <div>
+            <h2>User Module</h2>
+            <h3>Summary</h3>
+            <p>The User module manages library users. It handles user creation, pagination, profile updates, lookup by customer code or email, password hashing, deletion, role assignment, and user-related metrics.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>user.module.ts</code>: registers the user feature module.</li>
+              <li><code>user.controller.ts</code>: exposes user REST endpoints.</li>
+              <li><code>user.service.ts</code>: contains user business logic.</li>
+              <li><code>user.entity.ts</code>: maps the <code>User</code> database entity.</li>
+              <li><code>createUser.dto.ts</code>: create-user request shape.</li>
+              <li><code>updateUser.dto.ts</code>: update-user request shape.</li>
+              <li><code>user.enum.ts</code>: user role enum.</li>
+              <li><code>role.guard.ts</code>: checks role-based access.</li>
+              <li><code>role.decorator.ts</code>: declares required roles on routes.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>findAll(page = 1, limit = 10)</code></h4>
+                <p>Fetches users with pagination. It normalizes <code>page</code> to at least <code>1</code>, clamps <code>limit</code> between <code>1</code> and <code>100</code>, updates the active-users gauge, and returns a paginated response.</p>
+                <p><strong>Output:</strong> <code>{ data: User[], meta: { page, limit, total, totalPages } }</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>create(userData: CreateUserDto)</code></h4>
+                <p>Creates a user inside a transaction. It checks duplicate email, hashes the password with bcrypt, generates a <code>customerCode</code>, saves the user, and increments the user-created metric.</p>
+                <p><strong>Output:</strong> The saved <code>User</code> entity. Duplicate email conflicts throw <code>ConflictException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>update(customerCode: string, userData: UpdateUserDto)</code></h4>
+                <p>Updates a user by <code>customerCode</code>. It supports <code>name</code>, <code>email</code>, and <code>password</code>; password updates are validated and hashed before saving.</p>
+                <p><strong>Output:</strong> The updated <code>User</code> entity. Missing users throw <code>NotFoundException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>findUserByCustomerCode(customerCode: string)</code></h4>
+                <p>Finds a user using the public customer code identifier.</p>
+                <p><strong>Output:</strong> A <code>User</code> entity. Throws <code>NotFoundException</code> when no user exists.</p>
+              </div>
+              <div class="function">
+                <h4><code>findUserByEmail(email: string)</code></h4>
+                <p>Finds a user by email, mainly for authentication workflows.</p>
+                <p><strong>Output:</strong> A <code>User</code> entity. Throws <code>NotFoundException</code> when no user exists.</p>
+              </div>
+              <div class="function">
+                <h4><code>deleteUserByCustomerCode(customerCode: string)</code></h4>
+                <p>Deletes a user by customer code.</p>
+                <p><strong>Output:</strong> No explicit return value on success. Throws <code>NotFoundException</code> when no row is deleted.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="auth">
+        <div class="module-grid">
+          <div class="thumb"><img src="Auth.jpg" alt="Authentication Architecture"></div>
+          <div>
+            <h2>Auth Module</h2>
+            <h3>Summary</h3>
+            <p>The Auth module validates user credentials, issues JWT access tokens, and provides guards and strategies for protecting backend routes.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>auth.module.ts</code>: registers authentication dependencies.</li>
+              <li><code>auth.controller.ts</code>: exposes login-related endpoints.</li>
+              <li><code>auth.service.ts</code>: validates users and signs JWTs.</li>
+              <li><code>authType.ts</code>: defines authenticated-user typing.</li>
+              <li><code>local.strategy.ts</code>: username/password strategy.</li>
+              <li><code>local-auth.guard.ts</code>: guard for local login.</li>
+              <li><code>jwt.strategy.ts</code>: validates JWT payloads.</li>
+              <li><code>jwt-auth.guard.ts</code>: protects JWT-only routes.</li>
+              <li><code>authenticated.guard.ts</code>: checks session authentication.</li>
+              <li><code>session.serializer.ts</code>: serializes session users.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>validateUser(email: string, password: string)</code></h4>
+                <p>Looks up the user by email and compares the supplied password with the stored bcrypt hash. It records auth request/failure metrics and increments the active-users gauge on success.</p>
+                <p><strong>Output:</strong> <code>{ id: number, email: string, role: Role }</code>. Invalid credentials throw <code>UnauthorizedException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>login(user: AuthUser)</code></h4>
+                <p>Builds a JWT payload from the authenticated user's id, email, and role, then signs it using <code>JwtService</code>.</p>
+                <p><strong>Output:</strong> <code>{ access_token: string }</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="borrow">
+        <div class="module-grid">
+          <div class="thumb"><img src="borrow.jpg" alt="Borrow Module Diagram"></div>
+          <div>
+            <h2>Borrow Module</h2>
+            <h3>Summary</h3>
+            <p>The Borrow module handles book borrowing and returning. It validates users and books, prevents double-borrowing of the same book, tracks due dates and return dates, and exposes active or user-specific borrow history.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>borrow.module.ts</code>: registers borrow dependencies.</li>
+              <li><code>borrow.controller.ts</code>: exposes borrow and return endpoints.</li>
+              <li><code>borrow.service.ts</code>: contains borrow transaction logic.</li>
+              <li><code>borrow.entity.ts</code>: maps <code>BorrowRecord</code> and <code>BorrowStatus</code>.</li>
+              <li><code>borrow-book.dto.ts</code>: borrow request shape.</li>
+              <li><code>return-book.dto.ts</code>: return request shape.</li>
+              <li><code>Book</code> relation: connects borrow records to books.</li>
+              <li><code>User</code> relation: connects borrow records to users.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>borrowBook(dto: BorrowBookDto)</code></h4>
+                <p>Validates the user by <code>customerCode</code>, validates the book by <code>bookCode</code>, checks whether the book is already actively borrowed, then saves a new borrow record with status <code>BORROWED</code>.</p>
+                <p><strong>Output:</strong> The saved <code>BorrowRecord</code>. Missing users/books throw <code>NotFoundException</code>; unavailable books throw <code>BadRequestException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>returnBook(borrowId: number)</code></h4>
+                <p>Loads the borrow record with related user and book, prevents returning an already returned record, then marks it as <code>RETURNED</code> and sets <code>returnDate</code>.</p>
+                <p><strong>Output:</strong> The updated <code>BorrowRecord</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>getUserBorrows(userId: string)</code></h4>
+                <p>Returns borrow records for a specific user by matching <code>user.customerCode</code>. Results include the related book and are ordered newest first.</p>
+                <p><strong>Output:</strong> <code>BorrowRecord[]</code> with the <code>book</code> relation loaded.</p>
+              </div>
+              <div class="function">
+                <h4><code>getAllActiveBorrows()</code></h4>
+                <p>Fetches all borrow records currently marked as <code>BORROWED</code>, including user and book details.</p>
+                <p><strong>Output:</strong> Active <code>BorrowRecord[]</code> with <code>user</code> and <code>book</code> relations loaded.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="book">
+        <div class="module-grid">
+          <div class="thumb"><img src="book_module.jpg" alt="Book Module Diagram"></div>
+          <div>
+            <h2>Book Module</h2>
+            <h3>Summary</h3>
+            <p>The Book module manages the library catalogue. It creates, updates, deletes, paginates, and searches books by name, ISBN, or author while recording operational metrics.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>book.module.ts</code>: registers the book feature module.</li>
+              <li><code>book.controller.ts</code>: exposes catalogue REST endpoints.</li>
+              <li><code>book.service.ts</code>: contains catalogue business logic.</li>
+              <li><code>book.entity.ts</code>: maps the <code>Book</code> database entity.</li>
+              <li><code>createBook.dto.ts</code>: create-book request shape.</li>
+              <li><code>updateBook.dto.ts</code>: update-book request shape.</li>
+              <li><code>generateCode</code>: creates human-friendly book codes.</li>
+              <li><code>BorrowRecord</code> relation: connects books to borrow records.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>findAll(page = 1, limit = 10)</code></h4>
+                <p>Fetches books with pagination, normalizing invalid page/limit values and returning metadata for client paging.</p>
+                <p><strong>Output:</strong> <code>{ data: Book[], meta: { page, limit, total, totalPages } }</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>create(bookData: CreateBookDto)</code></h4>
+                <p>Creates a book inside a transaction, checks duplicate ISBN values, generates a <code>bookCode</code>, and saves the entity.</p>
+                <p><strong>Output:</strong> The saved <code>Book</code> entity. Duplicate ISBN values throw <code>ConflictException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>update(bookCode: string, bookData: UpdateBookDto)</code></h4>
+                <p>Builds a partial update from supplied <code>name</code>, <code>Author</code>, and <code>ISBN</code> values, updates by <code>bookCode</code>, then returns the refreshed book.</p>
+                <p><strong>Output:</strong> The updated <code>Book</code> entity, or the existing lookup result when no fields are supplied.</p>
+              </div>
+              <div class="function">
+                <h4><code>delete(bookid: number)</code></h4>
+                <p>Deletes a book by numeric id and verifies that a row was affected.</p>
+                <p><strong>Output:</strong> <code>{ message: string }</code>. Missing books throw <code>NotFoundException</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>findBookByName(name: string)</code></h4>
+                <p>Finds the first book whose <code>name</code> exactly matches the supplied value.</p>
+                <p><strong>Output:</strong> A <code>Book</code> entity or <code>null</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>findBookByISBN(ISBN: string)</code></h4>
+                <p>Finds the first book whose <code>ISBN</code> exactly matches the supplied value.</p>
+                <p><strong>Output:</strong> A <code>Book</code> entity or <code>null</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>findBookByAuthor(author: string)</code></h4>
+                <p>Finds the first book whose <code>Author</code> exactly matches the supplied author value.</p>
+                <p><strong>Output:</strong> A <code>Book</code> entity or <code>null</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="chatbot">
+        <div class="module-grid">
+          <div class="thumb no-image">Chatbot Module</div>
+          <div>
+            <h2>Chatbot Module</h2>
+            <h3>Summary</h3>
+            <p>The Chatbot module provides an AI library assistant. It manages conversations, routes short catalogue questions to tool calls, uses RAG for contextual answers, stores conversation history in Redis, and records chatbot/system metrics.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>chatbot.module.ts</code>: registers chatbot dependencies.</li>
+              <li><code>chatbot.controller.ts</code>: exposes chat endpoints.</li>
+              <li><code>chatbot.service.ts</code>: orchestrates chat requests.</li>
+              <li><code>chatbot-conversation.store.ts</code>: stores chat history in Redis.</li>
+              <li><code>chat-session.factory.ts</code>: creates Gemini chat sessions.</li>
+              <li><code>prompt-builder.ts</code>: builds initial, history, and RAG prompts.</li>
+              <li><code>routing-policy.ts</code>: decides tool call vs RAG routing.</li>
+              <li><code>tool-executor.ts</code>: executes supported book lookup tools.</li>
+              <li><code>rag.service.ts</code>: embeds, indexes, and searches RAG content.</li>
+              <li><code>timeout.service.ts</code>: wraps model calls with timeouts.</li>
+              <li><code>toolCall.ts</code>: declares Gemini tool definitions.</li>
+              <li><code>helperType.ts</code>: defines chat and tool types.</li>
+              <li><code>chatVariables.ts</code>: stores prompt and timeout constants.</li>
+              <li><code>dto/chat-request.dto.ts</code>: chat request DTO.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>ChatbotService.handleMessage(message, conversationId?)</code></h4>
+                <p>Main chatbot entry point. It resolves the conversation id, loads history, creates a chat session, sends the initial prompt, generates a reply, appends the turn to storage, and records timing, CPU, and memory metrics.</p>
+                <p><strong>Output:</strong> <code>{ reply: string, conversationId: string }</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.generateWithRAG(chat, message)</code></h4>
+                <p>Searches the RAG index, builds a context-enriched prompt, sends it to the model with timeout protection, and returns the generated text.</p>
+                <p><strong>Output:</strong> A model-generated reply string.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.generateWithTools(chat, message)</code></h4>
+                <p>Lets the model request supported book lookup tools, executes each tool, sends function responses back to the model, and repeats until a final text answer is produced or the iteration limit is reached.</p>
+                <p><strong>Output:</strong> A final reply string, or <code>No final response generated.</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.generateReply(chat, message)</code></h4>
+                <p>Chooses between tool calling and RAG. Short catalogue-search messages use tools; longer or general messages use RAG.</p>
+                <p><strong>Output:</strong> A reply string.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.createChatSession(history)</code></h4>
+                <p>Converts stored conversation history into model history format and creates a Gemini chat session.</p>
+                <p><strong>Output:</strong> A <code>ChatSession</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.sendInitialPrompt(chat, message)</code></h4>
+                <p>Sends the initial library-assistant prompt to the model with the configured timeout.</p>
+                <p><strong>Output:</strong> No explicit return value.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.extractToolCall(response)</code></h4>
+                <p>Reads the first Gemini candidate and returns the first function call part if the model requested a tool.</p>
+                <p><strong>Output:</strong> A <code>ToolCall</code> object or <code>null</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.resolveTimeoutMs()</code></h4>
+                <p>Reads <code>CHATBOT_TIMEOUT_MS</code> from the environment and falls back to <code>DEFAULT_TIMEOUT_MS</code> when the value is missing or invalid.</p>
+                <p><strong>Output:</strong> Timeout duration in milliseconds.</p>
+              </div>
+              <div class="function">
+                <h4><code>ChatbotService.recordSystemMetrics(startCpuUsage, startTime)</code></h4>
+                <p>Calculates request CPU usage and heap memory, then updates Prometheus gauges.</p>
+                <p><strong>Output:</strong> No explicit return value.</p>
+              </div>
+              <div class="function">
+                <h4><code>RagService.embed(text)</code></h4>
+                <p>Creates an embedding vector for text using the Gemini embedding model.</p>
+                <p><strong>Output:</strong> <code>number[]</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>RagService.chunkText(text, size = 500)</code></h4>
+                <p>Splits text into fixed-size character chunks for indexing.</p>
+                <p><strong>Output:</strong> <code>string[]</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>RagService.indexBook(bookId, content)</code></h4>
+                <p>Deletes old Redis RAG keys for the book, chunks the content, embeds each chunk, and stores the chunk/vector pairs in Redis.</p>
+                <p><strong>Output:</strong> No explicit return value; Redis index entries are created.</p>
+              </div>
+              <div class="function">
+                <h4><code>RagService.cosine(a, b)</code></h4>
+                <p>Computes cosine similarity between two vectors and returns <code>0</code> if either vector has zero magnitude.</p>
+                <p><strong>Output:</strong> Similarity score as a number.</p>
+              </div>
+              <div class="function">
+                <h4><code>RagService.search(query)</code></h4>
+                <p>Embeds the query, loads indexed Redis chunks, scores them by cosine similarity, sorts descending, and returns the top three.</p>
+                <p><strong>Output:</strong> <code>Array&lt;{ text: string, score: number }&gt;</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>TimeoutService.withTimeout(operation, timeoutMs, operationName)</code></h4>
+                <p>Races an async operation against a timer and throws <code>RequestTimeoutException</code> if the timer wins.</p>
+                <p><strong>Output:</strong> The operation result typed as <code>T</code>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="app-factory">
+        <div class="module-grid">
+          <div class="thumb no-image">App Factory</div>
+          <div>
+            <h2>App Factory</h2>
+            <h3>Summary</h3>
+            <p>The app factory centralizes NestJS application creation and shared bootstrap configuration. It supports both the production <code>AppModule</code> path and integration-test <code>TestingModule</code> path, optionally connects Redis, wires Redis-backed sessions, and applies the common security, validation, authentication, exception filter, and Swagger setup.</p>
+
+            <h3>List of Components</h3>
+            <ul class="components">
+              <li><code>app.factory.ts</code>: creates and configures the Nest Express application.</li>
+              <li><code>main.ts</code>: starts the real server by calling <code>createApp()</code> and listening on port <code>3000</code>.</li>
+              <li><code>test/integration/helpers/test-app.ts</code>: builds test modules and reuses <code>createApp()</code> for integration tests.</li>
+              <li><code>app.module.ts</code>: default root module used when no testing module is supplied.</li>
+              <li><code>config/redis.ts</code>: loads Redis environment settings, creates the Redis client, and exposes connect/disconnect/reset helpers.</li>
+              <li><code>appSetup/setupSecurity.ts</code>: applies Helmet, CORS, and disables the Express powered-by header.</li>
+              <li><code>appSetup/setupValidation.ts</code>: registers the global DTO validation pipe.</li>
+              <li><code>appSetup/setupAuth.ts</code>: configures Express sessions and Passport middleware.</li>
+              <li><code>appSetup/setupFilters.ts</code>: registers the global exception filter.</li>
+              <li><code>appSetup/setupSwagger.ts</code>: exposes Swagger API documentation outside production.</li>
+            </ul>
+
+            <h3>Service Functions: Explained</h3>
+            <div class="functions">
+              <div class="function">
+                <h4><code>createApp(input = AppModule, options = {})</code></h4>
+                <p>Creates a <code>NestExpressApplication</code> from either the default <code>AppModule</code> or a supplied <code>TestingModule</code>. Real app creation uses <code>NestFactory.create</code>; test app creation uses <code>TestingModule.createNestApplication</code>.</p>
+                <p><strong>Output:</strong> A configured <code>NestExpressApplication</code> returned from <code>configureApp</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>configureApp(app, options = {})</code></h4>
+                <p>Applies the shared runtime configuration. It connects Redis by default, creates a <code>RedisStore</code> for sessions when Redis is enabled, then runs security, validation, auth/session, global filter, and Swagger setup in order.</p>
+                <p><strong>Output:</strong> The same configured application instance. Passing <code>{ connectToRedis: false }</code> skips Redis and creates an in-memory session setup.</p>
+              </div>
+              <div class="function">
+                <h4><code>isTestingModule(value)</code></h4>
+                <p>Checks whether the supplied input has <code>createNestApplication</code>, allowing the factory to distinguish integration-test modules from normal Nest module classes.</p>
+                <p><strong>Output:</strong> A boolean type guard for <code>TestingModule</code>.</p>
+              </div>
+              <div class="function">
+                <h4><code>connectRedis()</code></h4>
+                <p>Opens the shared Redis client only when it is not already connected. Redis host and port are read from environment files and environment variables, with defaults of <code>127.0.0.1</code> and <code>6379</code>.</p>
+                <p><strong>Output:</strong> The connected Redis client. Invalid <code>REDIS_PORT</code> values throw during Redis module initialization.</p>
+              </div>
+              <div class="function">
+                <h4><code>setupSecurity(app)</code></h4>
+                <p>Installs Helmet with a restrictive content security policy and HSTS, enables credentialed CORS for <code>http://localhost:5173</code>, and removes the <code>x-powered-by</code> header.</p>
+                <p><strong>Output:</strong> No explicit return value; middleware and Express settings are applied to the app.</p>
+              </div>
+              <div class="function">
+                <h4><code>setupValidation(app)</code></h4>
+                <p>Registers a global <code>ValidationPipe</code> that whitelists DTO fields, rejects non-whitelisted fields, and transforms incoming payloads into expected DTO types.</p>
+                <p><strong>Output:</strong> No explicit return value; global validation is applied.</p>
+              </div>
+              <div class="function">
+                <h4><code>setupAuth(app, store)</code></h4>
+                <p>Configures <code>express-session</code> with the supplied store, <code>SESSION_SECRET</code>, secure production cookies, and Passport initialization/session middleware.</p>
+                <p><strong>Output:</strong> No explicit return value; session and Passport middleware are mounted.</p>
+              </div>
+              <div class="function">
+                <h4><code>setupFilters(app)</code></h4>
+                <p>Registers <code>GlobalExceptionFilter</code> so application exceptions are handled through one shared response path.</p>
+                <p><strong>Output:</strong> No explicit return value; the global filter is applied.</p>
+              </div>
+              <div class="function">
+                <h4><code>setupSwagger(app)</code></h4>
+                <p>Builds Swagger documentation for the library API, including bearer JWT auth metadata, and serves it at <code>/api</code> when <code>NODE_ENV</code> is not <code>production</code>.</p>
+                <p><strong>Output:</strong> No explicit return value; Swagger is mounted in non-production environments.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

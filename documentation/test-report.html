@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Library Management Backend Test Report</title>
+    <style>
+      :root{--bg:#f7f9fb;--card:#ffffff;--muted:#667085;--text:#111827;--accent:#0f62fe;--line:#e6eef8;--code:#f1f5f9;--ok:#067647;--warn:#b54708}
+      html,body{height:100%}
+      body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--text)}
+      .wrap{max-width:1120px;margin:28px auto;padding:24px}
+      header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:18px}
+      h1{font-size:1.5rem;margin:0}
+      h2{font-size:1.25rem;margin:0 0 8px}
+      h3{font-size:1.05rem;margin:18px 0 8px}
+      h4{font-size:1rem;margin:0 0 6px}
+      p{line-height:1.55}
+      p.lead{color:var(--muted);margin:6px 0 0}
+      nav{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+      nav a{color:var(--accent);text-decoration:none;padding:8px 10px;border-radius:6px;border:1px solid transparent}
+      nav a:hover{background:rgba(15,98,254,0.06);border-color:rgba(15,98,254,0.12)}
+      section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:18px;box-shadow:0 6px 20px rgba(15,23,42,0.04)}
+      .module-grid{display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:22px;align-items:start}
+      .summary-card{border:1px solid var(--line);border-radius:8px;background:#fff;padding:14px}
+      .summary-card strong{display:block;font-size:0.88rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+      .summary-card p{margin:0}
+      .badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+      .badge{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;background:#f8fafc;color:#344054;font-size:.88rem;padding:4px 9px}
+      .badge.unit{color:var(--accent)}
+      .badge.integration{color:var(--ok)}
+      .badge.e2e{color:var(--warn)}
+      ul{margin:8px 0 0;padding-left:20px;color:#1f2937}
+      li{margin-bottom:6px;line-height:1.45}
+      .files{columns:2}
+      .test-block{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}
+      .test-block p{margin:6px 0;color:#1f2937}
+      code{background:var(--code);padding:2px 6px;border-radius:6px;font-size:0.95em}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:10px 8px;line-height:1.45}
+      th{font-size:.88rem;color:var(--muted);font-weight:700}
+      @media (max-width:920px){header{display:block}nav{justify-content:flex-start;margin-top:12px}.module-grid{grid-template-columns:1fr}.files{columns:1}}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Library Management Backend Test Report</h1>
+          <p class="lead">Analysis of backend unit, integration, and end-to-end spec files grouped by module.</p>
+        </div>
+        <nav aria-label="Quick links">
+          <a href="#user">User</a>
+          <a href="#auth">Auth</a>
+          <a href="#borrow">Borrow</a>
+          <a href="#book">Book</a>
+          <a href="#chatbot">Chatbot</a>
+          <a href="#supporting">Supporting</a>
+        </nav>
+      </header>
+
+      <section id="overview">
+        <h2>Test Suite Overview</h2>
+        <p>The backend uses Jest with Nest testing utilities and Supertest. Unit tests live under <code>backend/src</code> and follow <code>*.spec.ts</code>. Integration tests live under <code>backend/test/integration</code> and follow <code>*.integration-spec.ts</code>. The full API E2E test is <code>backend/test/app.e2e-spec.ts</code>.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Spec Pattern</th>
+              <th>How It Is Tested</th>
+              <th>Command</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Unit</td>
+              <td><code>backend/src/**/*.spec.ts</code></td>
+              <td>Controllers, services, guards, strategies, and helpers are tested with mocked dependencies.</td>
+              <td><code>npm run test</code></td>
+            </tr>
+            <tr>
+              <td>Integration</td>
+              <td><code>backend/test/integration/*.integration-spec.ts</code></td>
+              <td>HTTP requests are sent through a configured Nest test app with database, Redis, metrics, and chatbot doubles.</td>
+              <td><code>npm run test:integration</code></td>
+            </tr>
+            <tr>
+              <td>E2E</td>
+              <td><code>backend/test/app.e2e-spec.ts</code></td>
+              <td>The API is exercised as a user journey: auth, book management, borrowing, chatbot, and cleanup.</td>
+              <td><code>npm run test:e2e</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="user">
+        <div class="module-grid">
+          <div class="summary-card">
+            <strong>Module</strong>
+            <h2>User</h2>
+            <p>User tests cover account creation, pagination, lookup, update, deletion, password handling, and role-based access decisions.</p>
+            <div class="badge-row">
+              <span class="badge unit">Unit specs</span>
+              <span class="badge integration">Integration via auth flows</span>
+              <span class="badge e2e">E2E via auth journey</span>
+            </div>
+          </div>
+          <div>
+            <h3>What Is Being Tested</h3>
+            <ul>
+              <li>User service pagination, including invalid page and limit normalization and maximum limit capping.</li>
+              <li>User creation with duplicate email protection, password hashing, bcrypt failure handling, and repository save errors.</li>
+              <li>User update paths with and without password changes, empty DTO handling, empty password rejection, missing-user errors, and duplicate email conflict mapping.</li>
+              <li>Lookup by customer code and email, including not-found and null-return cases.</li>
+              <li>User deletion by customer code, including no-row deletion handling.</li>
+              <li>Controller delegation for list, create, lookup, update, and delete operations.</li>
+              <li>Role guard authorization when no roles are required, when roles match, when roles do not match, and when request user data is missing.</li>
+            </ul>
+
+            <h3>How It Is Being Tested</h3>
+            <div class="test-block">
+              <h4>Unit specs</h4>
+              <p>The service tests mock repositories, transactions, bcrypt, and metrics. Controller tests use a mocked <code>UserService</code> and assert arguments, returned values, DTO immutability, and error propagation. Role guard tests mock Nest reflector metadata and execution context request users.</p>
+              <ul class="files">
+                <li><code>backend/src/user/user.service.spec.ts</code></li>
+                <li><code>backend/src/user/user.controller.spec.ts</code></li>
+                <li><code>backend/src/user/role.guard.spec.ts</code></li>
+              </ul>
+            </div>
+            <div class="test-block">
+              <h4>Integration and E2E coverage</h4>
+              <p>User behavior is covered through registration, duplicate registration rejection, login, role checks, and member/admin access rules in the auth integration and E2E specs.</p>
+              <ul class="files">
+                <li><code>backend/test/integration/auth.integration-spec.ts</code></li>
+                <li><code>backend/test/app.e2e-spec.ts</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="auth">
+        <div class="module-grid">
+          <div class="summary-card">
+            <strong>Module</strong>
+            <h2>Auth</h2>
+            <p>Auth tests cover credential validation, JWT creation, Passport guards, JWT/local strategies, session serialization, and protected-route behavior.</p>
+            <div class="badge-row">
+              <span class="badge unit">Unit specs</span>
+              <span class="badge integration">Integration specs</span>
+              <span class="badge e2e">E2E specs</span>
+            </div>
+          </div>
+          <div>
+            <h3>What Is Being Tested</h3>
+            <ul>
+              <li><code>AuthService.validateUser</code> returns the auth-user shape for valid credentials and rejects wrong passwords, missing users, and bcrypt failures.</li>
+              <li><code>AuthService.login</code> signs JWT payloads and propagates signing errors.</li>
+              <li><code>AuthController.login</code> delegates to the service with <code>request.user</code> and propagates failures.</li>
+              <li><code>JwtAuthGuard</code>, <code>LocalAuthGuard</code>, and <code>AuthenticatedGuard</code> allow or block requests according to Passport/session state.</li>
+              <li><code>JwtStrategy</code> maps valid payloads to auth users and rejects deleted or missing users.</li>
+              <li><code>LocalStrategy</code> delegates credential checks to <code>AuthService</code> and handles null or thrown validation results.</li>
+              <li><code>SessionSerializer</code> serializes and deserializes payloads without altering them.</li>
+            </ul>
+
+            <h3>How It Is Being Tested</h3>
+            <div class="test-block">
+              <h4>Unit specs</h4>
+              <p>Auth units use mocked <code>UserService</code>, <code>JwtService</code>, Passport request objects, execution contexts, and serializer callbacks. They assert returned auth shapes, exception types, inherited guard behavior, and service-call parameters.</p>
+              <ul class="files">
+                <li><code>backend/src/auth/auth.service.spec.ts</code></li>
+                <li><code>backend/src/auth/auth.controller.spec.ts</code></li>
+                <li><code>backend/src/auth/authenticated.guard.spec.ts</code></li>
+                <li><code>backend/src/auth/jwt-auth.guard.spec.ts</code></li>
+                <li><code>backend/src/auth/jwt.strategy.spec.ts</code></li>
+                <li><code>backend/src/auth/local-auth.guard.spec.ts</code></li>
+                <li><code>backend/src/auth/local.strategy.spec.ts</code></li>
+                <li><code>backend/src/auth/session.serializer.spec.ts</code></li>
+              </ul>
+            </div>
+            <div class="test-block">
+              <h4>Integration and E2E coverage</h4>
+              <p>Integration tests register users, reject duplicates, log in successfully, reject invalid credentials and invalid payloads, block members from admin routes, and expose metrics. E2E tests register admin/member users, log them in, and verify invalid login behavior before using tokens across book and borrow flows.</p>
+              <ul class="files">
+                <li><code>backend/test/integration/auth.integration-spec.ts</code></li>
+                <li><code>backend/test/app.e2e-spec.ts</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="borrow">
+        <div class="module-grid">
+          <div class="summary-card">
+            <strong>Module</strong>
+            <h2>Borrow</h2>
+            <p>Borrow tests cover borrowing a book, preventing duplicate active borrows, returning books, and exposing active and user-specific borrow records.</p>
+            <div class="badge-row">
+              <span class="badge unit">Unit specs</span>
+              <span class="badge integration">Integration specs</span>
+              <span class="badge e2e">E2E specs</span>
+            </div>
+          </div>
+          <div>
+            <h3>What Is Being Tested</h3>
+            <ul>
+              <li><code>borrowBook</code> creates records when user and book exist, rejects missing users/books, blocks already borrowed books, and preserves the due date supplied by the DTO.</li>
+              <li><code>returnBook</code> marks records as returned, saves the result, rejects missing borrow records, and rejects already returned records.</li>
+              <li><code>getUserBorrows</code> returns history for a customer code and returns an empty array when no history exists.</li>
+              <li><code>getAllActiveBorrows</code> returns active borrow records with user and book relations.</li>
+              <li>The controller converts route ids to numbers, delegates DTOs and user ids to the service, returns active records, and passes invalid return ids as <code>NaN</code>.</li>
+            </ul>
+
+            <h3>How It Is Being Tested</h3>
+            <div class="test-block">
+              <h4>Unit specs</h4>
+              <p>Borrow service tests mock the borrow, user, and book repositories and assert repository queries, saved entity shape, status transitions, and exception behavior. Controller tests use a mocked <code>BorrowService</code> to verify parameter conversion and delegation.</p>
+              <ul class="files">
+                <li><code>backend/src/borrow/borrow.service.spec.ts</code></li>
+                <li><code>backend/src/borrow/borrow.controller.spec.ts</code></li>
+              </ul>
+            </div>
+            <div class="test-block">
+              <h4>Integration and E2E coverage</h4>
+              <p>The integration spec performs the main borrowing workflow over HTTP: borrow a book, reject duplicate borrow attempts, return it, and read history. The E2E spec also checks active-borrow visibility and user borrow history as part of the complete API journey.</p>
+              <ul class="files">
+                <li><code>backend/test/integration/borrow.integration-spec.ts</code></li>
+                <li><code>backend/test/app.e2e-spec.ts</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="book">
+        <div class="module-grid">
+          <div class="summary-card">
+            <strong>Module</strong>
+            <h2>Book</h2>
+            <p>Book tests cover catalogue CRUD, pagination, duplicate ISBN handling, search by name/ISBN/author, and admin-only access control.</p>
+            <div class="badge-row">
+              <span class="badge unit">Unit specs</span>
+              <span class="badge integration">Integration specs</span>
+              <span class="badge e2e">E2E specs</span>
+            </div>
+          </div>
+          <div>
+            <h3>What Is Being Tested</h3>
+            <ul>
+              <li><code>findAll</code> returns paginated books, empty pages, normalized pagination values, and repository-error behavior.</li>
+              <li><code>create</code> saves books successfully, detects duplicate ISBN values, and handles save failures.</li>
+              <li><code>update</code> updates all fields or only provided fields, rejects missing books, and handles save failures.</li>
+              <li><code>delete</code> deletes existing books, rejects missing books, and handles repository crashes.</li>
+              <li><code>findBookByName</code>, <code>findBookByISBN</code>, and <code>findBookByAuthor</code> return matching books, return <code>null</code> when not found, and map repository errors.</li>
+              <li>The controller passes query params, DTOs, book codes, and numeric ids to the service and propagates service errors.</li>
+            </ul>
+
+            <h3>How It Is Being Tested</h3>
+            <div class="test-block">
+              <h4>Unit specs</h4>
+              <p>Book service tests mock TypeORM repository methods, transaction manager behavior, and metrics. Controller tests mock <code>BookService</code> and assert the exact arguments sent from endpoint methods to service methods.</p>
+              <ul class="files">
+                <li><code>backend/src/book/book.service.spec.ts</code></li>
+                <li><code>backend/src/book/book.controller.spec.ts</code></li>
+              </ul>
+            </div>
+            <div class="test-block">
+              <h4>Integration and E2E coverage</h4>
+              <p>Integration tests create books, enforce unique ISBNs, list and search books, allow admins to update/delete, and block members from protected catalogue changes. E2E tests create/list/search books, verify admin update and member blocking, and delete books during cleanup.</p>
+              <ul class="files">
+                <li><code>backend/test/integration/book.integration-spec.ts</code></li>
+                <li><code>backend/test/app.e2e-spec.ts</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="chatbot">
+        <div class="module-grid">
+          <div class="summary-card">
+            <strong>Module</strong>
+            <h2>Chatbot</h2>
+            <p>Chatbot tests cover RAG response generation, tool-call routing, book lookup tools, prompt building, timeout handling, and conversational history.</p>
+            <div class="badge-row">
+              <span class="badge unit">Unit specs</span>
+              <span class="badge e2e">E2E specs</span>
+            </div>
+          </div>
+          <div>
+            <h3>What Is Being Tested</h3>
+            <ul>
+              <li><code>ChatbotController</code> passes incoming messages and conversation ids to the service, including empty message strings.</li>
+              <li><code>ChatbotService</code> returns model text through the RAG flow, executes book tools, handles all supported book lookup tools, rejects unknown tools, times out slow Gemini calls, replays stored history, and returns a fallback after maximum tool iterations.</li>
+              <li><code>ToolExecutor</code> runs <code>findAllBooks</code>, <code>findBookByName</code>, <code>findBookByISBN</code>, and <code>findBookByAuthor</code>, and throws for unknown tool names.</li>
+              <li><code>RoutingPolicy</code> identifies book-search messages that should use tools and leaves general messages for RAG.</li>
+              <li><code>PromptBuilder</code> builds initial prompts, chat history, RAG prompts with context, and RAG prompts without context.</li>
+              <li><code>TimeoutService</code> resolves fast operations and throws <code>RequestTimeoutException</code> for slow operations.</li>
+              <li><code>ChatSessionFactory</code> passes stored history into Gemini <code>startChat</code>.</li>
+            </ul>
+
+            <h3>How It Is Being Tested</h3>
+            <div class="test-block">
+              <h4>Unit specs</h4>
+              <p>Chatbot unit tests mock Gemini chat sessions, the book service, RAG search, conversation storage, prompt builders, tool execution, routing decisions, and timeout behavior. They assert both final replies and intermediate tool-call/function-response interactions.</p>
+              <ul class="files">
+                <li><code>backend/src/chatbot/chatbot.controller.spec.ts</code></li>
+                <li><code>backend/src/chatbot/chatbot.service.spec.ts</code></li>
+                <li><code>backend/src/chatbot/chat-session.factory.spec.ts</code></li>
+                <li><code>backend/src/chatbot/prompt-builder.spec.ts</code></li>
+                <li><code>backend/src/chatbot/routing-policy.spec.ts</code></li>
+                <li><code>backend/src/chatbot/timeout.service.spec.ts</code></li>
+                <li><code>backend/src/chatbot/tool-executor.spec.ts</code></li>
+              </ul>
+            </div>
+            <div class="test-block">
+              <h4>Integration and E2E coverage</h4>
+              <p>No standalone <code>chatbot.integration-spec.ts</code> exists. Chatbot HTTP behavior is covered in the E2E suite, which verifies tool-based book queries and follow-up conversational requests using the full application test flow.</p>
+              <ul class="files">
+                <li><code>backend/test/app.e2e-spec.ts</code></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="supporting">
+        <h2>Supporting Backend Specs</h2>
+        <p>These specs are outside the five feature modules but still form part of the backend test suite.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Spec Files</th>
+              <th>What Is Being Tested</th>
+              <th>How It Is Being Tested</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Application root</td>
+              <td><code>backend/src/app.controller.spec.ts</code><br><code>backend/src/app.service.spec.ts</code></td>
+              <td>Default app service greeting and controller delegation to the service.</td>
+              <td>Nest unit tests instantiate the controller/service with simple mocks and assert the returned greeting.</td>
+            </tr>
+            <tr>
+              <td>Common infrastructure</td>
+              <td><code>backend/src/common/exception.filter.spec.ts</code><br><code>backend/src/common/middleware/logger.middleware.spec.ts</code></td>
+              <td>Global exception response formatting, non-HTTP error fallback, and request logging after response completion.</td>
+              <td>Tests mock HTTP adapter/response behavior, thrown exceptions, request metadata, and response finish callbacks.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Integration Test Helpers</h3>
+        <p>The integration and E2E suites also use helper files that are not spec files: <code>backend/test/integration/helpers/test-app.ts</code>, <code>backend/test/integration/helpers/test-auth.ts</code>, and <code>backend/test/integration/helpers/test-doubles.ts</code>. These build the test app, create authenticated users/tokens, and replace external services with deterministic doubles.</p>
+      </section>
+    </div>
+  </body>
+</html>
