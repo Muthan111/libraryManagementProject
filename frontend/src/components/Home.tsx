@@ -13,11 +13,21 @@ const initialForm = {
   password: "",
 };
 
+const validateEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const validatePassword = (password: string) => {
+  return password.length >= 8;
+};
+
 const Home = () => {
   const [formData, setFormData] = useState(initialForm);
-  const [backendMessage, setBackendMessage] = useState("Checking backend connection...");
+  const [backendMessage, setBackendMessage] = useState(
+    "Checking backend connection...",
+  );
   const [accountMessage, setAccountMessage] = useState(
-    "Create an account to start using the library."
+    "Create an account to start using the library.",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,8 +45,25 @@ const Home = () => {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsSubmitting(true);
     setAccountMessage("Creating your account...");
+
+    // Client-side validation to avoid obvious backend rejections
+    if (!formData.name.trim()) {
+      setAccountMessage("Please enter your full name.");
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setAccountMessage("Please enter a valid email address.");
+      return;
+    }
+
+    if (!validatePassword(formData.password)) {
+      setAccountMessage("Password must be at least 8 characters.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
       const response = await fetch("http://localhost:3000/user", {
@@ -45,10 +72,28 @@ const Home = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...formData,
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password,
           role: "member",
         }),
       });
+
+      if (response.status === 409) {
+        setAccountMessage("An account with that email already exists.");
+        return;
+      }
+
+      if (response.status === 400) {
+        // attempt to show backend validation message
+        try {
+          const data = await response.json();
+          setAccountMessage(data.message || "Invalid signup details.");
+        } catch {
+          setAccountMessage("Invalid signup details.");
+        }
+        return;
+      }
 
       if (!response.ok) {
         throw new Error("Unable to create account.");
@@ -56,7 +101,7 @@ const Home = () => {
 
       setFormData(initialForm);
       setAccountMessage("Your account has been created. You can now sign in.");
-    } catch {
+    } catch (err) {
       setAccountMessage("We could not create your account right now.");
     } finally {
       setIsSubmitting(false);
@@ -72,8 +117,8 @@ const Home = () => {
           <p className="eyebrow">Library Management System</p>
           <h1>Welcome to your library.</h1>
           <p className="hero-text">
-            Find books, keep up with your borrowing, and create an account to get
-            started with the library.
+            Find books, keep up with your borrowing, and create an account to
+            get started with the library.
           </p>
           <ul className="highlight-list" aria-label="Library benefits">
             {highlights.map((highlight) => (
@@ -86,7 +131,11 @@ const Home = () => {
           </div>
         </div>
 
-        <section className="signup-panel" aria-label="Create account" id="membership">
+        <section
+          className="signup-panel"
+          aria-label="Create account"
+          id="membership"
+        >
           <div className="signup-heading">
             <h2>Make an account</h2>
             <p>Join as a library member and start managing your books.</p>
@@ -123,7 +172,11 @@ const Home = () => {
               required
             />
 
-            <button className="primary-button" type="submit" disabled={isSubmitting}>
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Creating account..." : "Create account"}
             </button>
           </form>

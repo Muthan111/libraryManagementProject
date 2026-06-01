@@ -3,6 +3,7 @@ import Book from "./pages/book";
 import BookDetail from "./pages/bookDetail";
 import BorrowedBooks from "./pages/borrowedBooks";
 import Profile from "./pages/profile";
+import Login from "./components/Login";
 import { Routes, Route } from "react-router-dom";
 import "./App.css";
 // const books = [
@@ -27,6 +28,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/books" element={<Book />} />
       <Route path="/books/:bookCode" element={<BookDetail />} />
       <Route path="/frontend/src/pages/book.tsx" element={<Book />} />
