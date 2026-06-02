@@ -79,7 +79,7 @@ const Home = () => {
           name: formData.name.trim(),
           email: formData.email.trim(),
           password: formData.password,
-          role: "member",
+          role: formData.isAdmin ? "ADMIN" : "MEMBER",
         }),
       });
 

@@ -1,5 +1,5 @@
 const TOKEN_KEY = "library_auth_token";
-export const API_BASE = (import.meta.env && import.meta.env.VITE_API_BASE) || "http://localhost:3000";
+export const API_BASE = (import.meta.env && (import.meta.env.VITE_BASE_API || import.meta.env.VITE_API_BASE)) || "http://localhost:3000";
 
 export function setToken(token: string) {
   try {

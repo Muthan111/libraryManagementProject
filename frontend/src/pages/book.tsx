@@ -21,6 +21,8 @@ type BooksResponse = {
 };
 
 const Book = () => {
+  const baseAPI = import.meta.env.VITE_BASE_API;
+  const fetchURL = import.meta.env.VITE_BOOK_GET;
   const [books, setBooks] = useState<BookItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -28,9 +30,7 @@ const Book = () => {
   useEffect(() => {
     const fetchBooks = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:3000/book?page=1&limit=10",
-        );
+        const response = await fetch(`${baseAPI}/${fetchURL}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch books");

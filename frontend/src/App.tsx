@@ -5,6 +5,8 @@ import BorrowedBooks from "./pages/borrowedBooks";
 import Profile from "./pages/profile";
 import Login from "./components/Login";
 import Admin from "./pages/admin";
+import AddBook from "./pages/AddBook";
+import EditBook from "./pages/EditBook";
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import "./App.css";
@@ -35,13 +37,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/books" element={<Book />} />
         <Route path="/books/:bookCode" element={<BookDetail />} />
-        <Route path="/frontend/src/pages/book.tsx" element={<Book />} />
-        <Route
-          path="/frontend/src/pages/borrowedBooks.tsx"
-          element={<BorrowedBooks />}
-        />
-        <Route path="/frontend/src/pages/profile.tsx" element={<Profile />} />
-        <Route path="/frontend/src/pages/admin.tsx" element={<Admin />} />
+        <Route path="/books/borrowed" element={<BorrowedBooks />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin/add" element={<AddBook />} />
+        <Route path="/admin/edit/:id" element={<EditBook />} />
       </Routes>
     </div>
   );

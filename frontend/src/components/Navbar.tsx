@@ -45,10 +45,10 @@ const Navbar = () => {
           <Link to="/books/borrowed">Borrowed Books</Link>
         </li>
         <li>
-          <Link to="/frontend/src/pages/profile.tsx">Profile</Link>
+          <Link to="/profile">Profile</Link>
         </li>
         <li>
-          <Link to="/frontend/src/pages/admin.tsx">Admin</Link>
+          <Link to="/admin">Admin</Link>
         </li>
         {user ? (
           <>
