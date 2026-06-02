@@ -59,6 +59,7 @@ describe('AuthService', () => {
         service.validateUser('alice@example.com', 'plain-password'),
       ).resolves.toEqual({
         id: 1,
+        name: 'Alice',
         email: 'alice@example.com',
         role: Role.ADMIN,
       });
@@ -125,6 +126,7 @@ describe('AuthService', () => {
       await expect(
         service.login({
           id: 7,
+          name: 'Login User',
           email: 'login@example.com',
           role: Role.ADMIN,
         }),
@@ -134,6 +136,7 @@ describe('AuthService', () => {
 
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: 7,
+        name: 'Login User',
         email: 'login@example.com',
         role: Role.ADMIN,
       });
@@ -147,6 +150,7 @@ describe('AuthService', () => {
       await expect(
         service.login({
           id: 1,
+          name: 'Test User',
           email: 'test@test.com',
           role: Role.ADMIN,
         }),
