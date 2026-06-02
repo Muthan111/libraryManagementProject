@@ -1,5 +1,4 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
-import Navbar from "./Navbar";
 
 const highlights = [
   "Search for books and discover what is available.",
@@ -11,6 +10,7 @@ const initialForm = {
   name: "",
   email: "",
   password: "",
+  isAdmin: false,
 };
 
 const validateEmail = (email: string) => {
@@ -39,8 +39,12 @@ const Home = () => {
   }, []);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = event.target;
-    setFormData((current) => ({ ...current, [name]: value }));
+    const { name, type, value, checked } = event.target;
+
+    setFormData((current) => ({
+      ...current,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -110,8 +114,6 @@ const Home = () => {
 
   return (
     <main className="home-page">
-      <Navbar />
-
       <section className="hero-section" id="welcome">
         <div className="hero-copy">
           <p className="eyebrow">Library Management System</p>
@@ -170,6 +172,14 @@ const Home = () => {
               value={formData.password}
               onChange={handleChange}
               required
+            />
+            <label htmlFor="isAdmin">Are you an admin?</label>
+            <input
+              id="isAdmin"
+              name="isAdmin"
+              type="checkbox"
+              checked={formData.isAdmin}
+              onChange={handleChange}
             />
 
             <button

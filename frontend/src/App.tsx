@@ -4,7 +4,9 @@ import BookDetail from "./pages/bookDetail";
 import BorrowedBooks from "./pages/borrowedBooks";
 import Profile from "./pages/profile";
 import Login from "./components/Login";
+import Admin from "./pages/admin";
 import { Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
 import "./App.css";
 // const books = [
 //   {
@@ -26,18 +28,22 @@ import "./App.css";
 // ];
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/books" element={<Book />} />
-      <Route path="/books/:bookCode" element={<BookDetail />} />
-      <Route path="/frontend/src/pages/book.tsx" element={<Book />} />
-      <Route
-        path="/frontend/src/pages/borrowedBooks.tsx"
-        element={<BorrowedBooks />}
-      />
-      <Route path="/frontend/src/pages/profile.tsx" element={<Profile />} />
-    </Routes>
+    <div>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/books" element={<Book />} />
+        <Route path="/books/:bookCode" element={<BookDetail />} />
+        <Route path="/frontend/src/pages/book.tsx" element={<Book />} />
+        <Route
+          path="/frontend/src/pages/borrowedBooks.tsx"
+          element={<BorrowedBooks />}
+        />
+        <Route path="/frontend/src/pages/profile.tsx" element={<Profile />} />
+        <Route path="/frontend/src/pages/admin.tsx" element={<Admin />} />
+      </Routes>
+    </div>
   );
 }
 

@@ -47,6 +47,9 @@ const Navbar = () => {
         <li>
           <Link to="/frontend/src/pages/profile.tsx">Profile</Link>
         </li>
+        <li>
+          <Link to="/frontend/src/pages/admin.tsx">Admin</Link>
+        </li>
         {user ? (
           <>
             <li className="nav-user">
