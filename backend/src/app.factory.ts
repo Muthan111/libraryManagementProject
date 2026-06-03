@@ -2,14 +2,14 @@ import { Type } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { TestingModule } from '@nestjs/testing';
-import { RedisStore } from 'connect-redis';
+// import { RedisStore } from 'connect-redis';
 import { AppModule } from './app.module';
 import { setupSecurity } from './appSetup/setupSecurity';
 import { setupSwagger } from './appSetup/setupSwagger';
 import { setupValidation } from './appSetup/setupValidation';
 import { setupAuth } from './appSetup/setupAuth';
 import { setupFilters } from './appSetup/setupFilters';
-import { connectRedis, redisClient } from './config/redis';
+// import { connectRedis, redisClient } from './config/redis';
 
 type NestApplicationInput = Type<unknown> | TestingModule;
 
@@ -23,21 +23,21 @@ function isTestingModule(value: NestApplicationInput): value is TestingModule {
 
 export async function configureApp(
   app: NestExpressApplication,
-  options: CreateAppOptions = {},
+  // options: CreateAppOptions = {},
 ) {
-  const connectToRedis = options.connectToRedis ?? true;
+  // const connectToRedis = options.connectToRedis ?? true;
 
-  if (connectToRedis) {
-    await connectRedis();
-  }
+  // if (connectToRedis) {
+  //   await connectRedis();
+  // }
 
-  const sessionStore = connectToRedis
-    ? new RedisStore({ client: redisClient as any })
-    : undefined;
+  // const sessionStore = connectToRedis
+  //   ? new RedisStore({ client: redisClient as any })
+  //   : undefined;
 
   setupSecurity(app);
   setupValidation(app);
-  setupAuth(app, sessionStore);
+  setupAuth(app);
   setupFilters(app);
   setupSwagger(app);
 
@@ -46,11 +46,11 @@ export async function configureApp(
 
 export async function createApp(
   input: NestApplicationInput = AppModule,
-  options: CreateAppOptions = {},
+  // options: CreateAppOptions = {},
 ) {
   const app = isTestingModule(input)
     ? input.createNestApplication<NestExpressApplication>()
     : await NestFactory.create<NestExpressApplication>(input);
 
-  return configureApp(app, options);
+  return configureApp(app);
 }
