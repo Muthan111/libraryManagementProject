@@ -10,12 +10,37 @@ type Book = {
   ISBN: string;
 };
 
+type User = {
+  userid: number;
+  customerCode: string;
+  email: string;
+  role: string;
+};
+
 const Admin = () => {
   const baseAPI = import.meta.env.VITE_BASE_API;
   const fetchURL = import.meta.env.VITE_BOOK_GET;
   const navigate = useNavigate();
+  const [users, setUsers] = useState<User[]>([]);
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch(`${baseAPI}/user?page=1&limit=10`, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to fetch users");
+
+      const data = await res.json();
+      setUsers(data.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchBooks = async () => {
     try {
@@ -66,10 +91,25 @@ const Admin = () => {
       return;
     }
 
-    fetchBooks();
+    Promise.all([fetchBooks(), fetchUsers()]);
   }, [navigate]);
 
   if (loading) return <p>Loading books...</p>;
+
+  const deleteUser = async (customerCode: string) => {
+    const confirmDelete = window.confirm("Delete this user?");
+
+    if (!confirmDelete) return;
+
+    await fetch(`${baseAPI}/user/${customerCode}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getToken()}`,
+      },
+    });
+
+    setUsers((prev) => prev.filter((u) => u.customerCode !== customerCode));
+  };
 
   return (
     <div style={{ maxWidth: 960, margin: "24px auto" }}>
@@ -107,6 +147,39 @@ const Admin = () => {
                   </button>
 
                   <button onClick={() => deleteBook(book.bookid)}>
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <h2>Users</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.userid}>
+                <td>{user.email}</td>
+                <td>{user.role}</td>
+                <td>
+                  <button
+                    onClick={() => navigate(`/admin/users/edit/${user.userid}`)}
+                  >
+                    Edit
+                  </button>
+
+                  <button onClick={() => deleteUser(user.customerCode)}>
                     Delete
                   </button>
                 </td>
