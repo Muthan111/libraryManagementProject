@@ -9,6 +9,7 @@ import AddBook from "./pages/AddBook";
 import EditBook from "./pages/EditBook";
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Chatbot from "./components/Chatbot";
 import "./App.css";
 // const books = [
 //   {
@@ -32,6 +33,7 @@ function App() {
   return (
     <div>
       <Navbar />
+      <Chatbot />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
