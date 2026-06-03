@@ -45,7 +45,7 @@ import { LokiMiddleware } from './common/middleware/LokiMiddleware';
     }),
     BookModule,
     AuthModule,
-    PassportModule.register({ session: true }),
+    PassportModule.register({ session: false }),
     BorrowModule,
     ChatbotModule,
     ThrottlerModule.forRoot([
