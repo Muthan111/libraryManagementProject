@@ -1,5 +1,5 @@
 const TOKEN_KEY = import.meta.env.VITE_AUTH_KEY;
-export const API_BASE = (import.meta.env && (import.meta.env.VITE_BASE_API || import.meta.env.VITE_API_BASE)) || "http://localhost:3000";
+export const API_BASE = (import.meta.env && (import.meta.env.VITE_BASE_API || import.meta.env.VITE_API_BASE));
 
 export function setToken(token: string) {
   try {

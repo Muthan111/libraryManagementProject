@@ -10,9 +10,9 @@ const Home = () => {
   const [backendMessage, setBackendMessage] = useState(
     "Checking backend connection...",
   );
-
+  const baseURL = import.meta.env.VITE_BASE_API;
   useEffect(() => {
-    fetch("http://localhost:3000")
+    fetch(`${baseURL}`)
       .then((response) => response.text())
       .then((message) => setBackendMessage(message))
       .catch(() => setBackendMessage("Backend is currently unavailable."));

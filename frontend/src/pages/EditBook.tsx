@@ -73,8 +73,9 @@ const EditBook = () => {
       <h2>Edit Book</h2>
       <form onSubmit={handleSubmit}>
         <div>
-          <label>Title</label>
+          <label htmlFor="name">Name</label>
           <input
+            id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -82,8 +83,9 @@ const EditBook = () => {
         </div>
 
         <div>
-          <label>Author</label>
+          <label htmlFor="Author">Author</label>
           <input
+            id="Author"
             value={Author}
             onChange={(e) => setAuthor(e.target.value)}
             required

@@ -10,6 +10,7 @@ import EditBook from "./pages/EditBook";
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Chatbot from "./components/Chatbot";
+import Button from "./components/button";
 import "./App.css";
 // const books = [
 //   {
@@ -34,6 +35,7 @@ function App() {
     <div>
       <Navbar />
       <Chatbot />
+      <Button label="Click me" />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

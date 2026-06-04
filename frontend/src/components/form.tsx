@@ -49,9 +49,10 @@ const Form = () => {
     }
 
     setIsSubmitting(true);
+    const API_BASE = import.meta.env.VITE_BASE_API;
 
     try {
-      const response = await fetch("http://localhost:3000/user", {
+      const response = await fetch(`${API_BASE}/user`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

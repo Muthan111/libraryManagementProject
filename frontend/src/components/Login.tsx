@@ -47,6 +47,7 @@ const Login = () => {
       }
     } catch (err) {
       setMessage("Login failed. Please try again later.");
+      throw err;
     } finally {
       setIsSubmitting(false);
     }

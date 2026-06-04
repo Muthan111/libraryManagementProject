@@ -45,8 +45,9 @@ const AddBook = () => {
       <h2 style={{ marginTop: 0 }}>Add Book</h2>
       <form onSubmit={handleSubmit}>
         <div>
-          <label>Title</label>
+          <label htmlFor="name">Name</label>
           <input
+            id="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -54,8 +55,9 @@ const AddBook = () => {
         </div>
 
         <div>
-          <label>Author</label>
+          <label htmlFor="Author">Author</label>
           <input
+            id="Author"
             value={Author}
             onChange={(e) => setAuthor(e.target.value)}
             required
@@ -63,7 +65,7 @@ const AddBook = () => {
         </div>
 
         <div>
-          <label>ISBN</label>
+          <label htmlFor="ISBN">ISBN</label>
           <input value={ISBN} onChange={(e) => setISBN(e.target.value)} />
         </div>
 
