@@ -1,24 +1,28 @@
-const TOKEN_KEY = "library_auth_token";
+const TOKEN_KEY = import.meta.env.VITE_AUTH_KEY;
 export const API_BASE = (import.meta.env && (import.meta.env.VITE_BASE_API || import.meta.env.VITE_API_BASE)) || "http://localhost:3000";
 
 export function setToken(token: string) {
   try {
     localStorage.setItem(TOKEN_KEY, token);
-  } catch {}
+  } catch {
+    throw new Error("Failed to save token");
+  }
 }
 
 export function getToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY);
   } catch {
-    return null;
+    throw new Error("Failed to retrieve token");
   }
 }
 
 export function removeToken() {
   try {
     localStorage.removeItem(TOKEN_KEY);
-  } catch {}
+  } catch {
+    throw new Error("Failed to remove token");
+  }
 }
 
 export function parseJwt(token: string) {
@@ -29,7 +33,7 @@ export function parseJwt(token: string) {
     const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
     return JSON.parse(decodeURIComponent(escape(decoded)));
   } catch {
-    return null;
+    throw new Error("Failed to parse token");
   }
 }
 
