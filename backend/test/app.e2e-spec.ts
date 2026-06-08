@@ -324,7 +324,7 @@ describe('Library API (e2e)', () => {
   let memberCode: string;
   let bookCode: string;
   let bookId: number;
-  let borrowId: number;
+  // let borrowId: number;
   let borrowCode: string;
 
   beforeAll(async () => {

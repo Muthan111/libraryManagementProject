@@ -2,12 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getToken } from '@willsoto/nestjs-prometheus';
-import {
-  Repository,
-  DataSource,
-  DeleteResult,
-  QueryFailedError,
-} from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 // Ensure generated borrow codes are deterministic for tests
 jest.mock('src/utils/code-generator', () => ({
   generateCode: jest.fn(() => 'BOR-0001-0001'),

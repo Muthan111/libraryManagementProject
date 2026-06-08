@@ -83,17 +83,16 @@ describe('Borrow integration', () => {
       });
 
     const returnResponse = await request(app.getHttpServer())
-    .post(
-      `/borrow/return`,
-    ).send({ borrowCode: borrowResponse.body.borrowCode })
+      .post(`/borrow/return`)
+      .send({ borrowCode: borrowResponse.body.borrowCode });
 
     expect(returnResponse.status).toBe(201);
     expect(returnResponse.body.status).toBe(BorrowStatus.RETURNED);
     expect(returnResponse.body.returnDate).toBeTruthy();
 
-    const duplicateReturnResponse = await request(app.getHttpServer()).post(
-      `/borrow/return`,
-    ).send({ borrowCode: borrowResponse.body.borrowCode })
+    const duplicateReturnResponse = await request(app.getHttpServer())
+      .post(`/borrow/return`)
+      .send({ borrowCode: borrowResponse.body.borrowCode });
 
     expect(duplicateReturnResponse.status).toBe(400);
 
