@@ -82,17 +82,18 @@ describe('Borrow integration', () => {
         expect(body[0].book.bookCode).toBe(bookResponse.body.bookCode);
       });
 
-    const returnResponse = await request(app.getHttpServer()).post(
-      `/borrow/${borrowResponse.body.id}/return`,
-    );
+    const returnResponse = await request(app.getHttpServer())
+    .post(
+      `/borrow/return`,
+    ).send({ borrowCode: borrowResponse.body.borrowCode })
 
     expect(returnResponse.status).toBe(201);
     expect(returnResponse.body.status).toBe(BorrowStatus.RETURNED);
     expect(returnResponse.body.returnDate).toBeTruthy();
 
     const duplicateReturnResponse = await request(app.getHttpServer()).post(
-      `/borrow/${borrowResponse.body.id}/return`,
-    );
+      `/borrow/return`,
+    ).send({ borrowCode: borrowResponse.body.borrowCode })
 
     expect(duplicateReturnResponse.status).toBe(400);
 

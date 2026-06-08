@@ -3,6 +3,7 @@ import { Controller, Post, Body, Param, Get } from '@nestjs/common';
 import { BorrowService } from './borrow.service';
 import { BorrowBookDto } from './borrow-book.dto';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ReturnBookDto } from './return-book.dto';
 
 @Controller('borrow')
 export class BorrowController {
@@ -10,14 +11,7 @@ export class BorrowController {
   constructor(private readonly borrowService: BorrowService) {}
   @ApiOperation({ summary: 'borrow Books' })
   @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        customerCode: { type: 'string' },
-        bookCode: { type: 'string' },
-        dueDate: { type: 'string', format: 'date-time' },
-      },
-    },
+    type: BorrowBookDto,
   })
   @Post()
   @ApiResponse({
@@ -34,14 +28,19 @@ export class BorrowController {
     return this.borrowService.borrowBook(dto);
   }
   @ApiOperation({ summary: 'Return book' })
-  @ApiParam({ name: 'id', type: 'number' })
+  @ApiBody({ type: ReturnBookDto })
   @ApiResponse({ status: 200, description: 'Book returned successfully.' })
   @ApiResponse({ status: 400, description: 'Book already returned.' })
   @ApiResponse({ status: 404, description: 'Borrow record not found.' })
-  @Post(':id/return')
+  @Post('/return')
   // Marks a borrow record as returned using its identifier.
-  returnBook(@Param('id') id: number) {
-    return this.borrowService.returnBook(Number(id));
+  returnBook(@Body() dto: ReturnBookDto) {
+    return this.borrowService.returnBook(dto);
+  }
+  @Post(':id/return')
+  // Backwards-compatible endpoint: return by borrow numeric id.
+  returnBookById(@Param('id') id: string) {
+    return this.borrowService.returnBookById(id);
   }
   @ApiOperation({ summary: 'Return book' })
   @ApiParam({ name: 'id', type: 'string' })

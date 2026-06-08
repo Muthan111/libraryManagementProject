@@ -2,11 +2,21 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getToken } from '@willsoto/nestjs-prometheus';
-import { Repository } from 'typeorm';
+import {
+  Repository,
+  DataSource,
+  DeleteResult,
+  QueryFailedError,
+} from 'typeorm';
+// Ensure generated borrow codes are deterministic for tests
+jest.mock('src/utils/code-generator', () => ({
+  generateCode: jest.fn(() => 'BOR-0001-0001'),
+}));
 import { Book } from '../book/book.entity';
 import { Role } from '../user/user.enum';
 import { User } from '../user/user.entity';
 import { BorrowBookDto } from './borrow-book.dto';
+import { ReturnBookDto } from './return-book.dto';
 import { BorrowRecord, BorrowStatus } from './borrow.entity';
 import { BorrowService } from './borrow.service';
 
@@ -43,11 +53,26 @@ describe('BorrowService', () => {
       ...overrides,
     }) as Book;
 
+  let transactionRepository: {
+    findOne: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
+
+  let manager: {
+    getRepository: jest.Mock;
+  };
+
+  let dataSource: {
+    transaction: jest.Mock;
+  };
+
   const buildBorrowRecord = (
     overrides: Partial<BorrowRecord> = {},
   ): BorrowRecord =>
     ({
       id: 1,
+      borrowCode: 'BOR-0001-0001',
       user: buildUser(),
       book: buildBook(),
       borrowDate: new Date('2026-05-01T10:00:00.000Z'),
@@ -74,6 +99,26 @@ describe('BorrowService', () => {
 
     bookRepository = {
       findOne: jest.fn(),
+      update: jest.fn().mockResolvedValue({}),
+    };
+
+    transactionRepository = {
+      findOne: jest.fn(),
+      create: jest.fn(),
+      save: jest.fn(),
+    };
+
+    manager = {
+      getRepository: jest.fn().mockImplementation((entity) => {
+        if (entity === Book) return bookRepository;
+        if (entity === User) return userRepository;
+        if (entity === BorrowRecord) return borrowRepository;
+        return transactionRepository;
+      }),
+    };
+
+    dataSource = {
+      transaction: jest.fn(async (callback) => callback(manager)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -99,6 +144,10 @@ describe('BorrowService', () => {
           provide: getToken('http_errors_total'),
           useValue: httpErrorsCounter,
         },
+        {
+          provide: DataSource,
+          useValue: dataSource,
+        },
       ],
     }).compile();
 
@@ -116,18 +165,24 @@ describe('BorrowService', () => {
         bookCode: 'BK001' as never,
         dueDate: '2026-05-15T00:00:00.000Z',
       };
+      const borrowCode = 'BOR-0001-0001';
+      const status = BorrowStatus.BORROWED;
       const user = buildUser();
       const book = buildBook();
       const createdBorrow = buildBorrowRecord({
+        borrowCode,
         user,
         book,
         dueDate: new Date(dto.dueDate),
+        status,
       });
       const savedBorrow = buildBorrowRecord({
+        borrowCode,
         id: 10,
         user,
         book,
         dueDate: new Date(dto.dueDate),
+        status,
       });
 
       userRepository.findOne!.mockResolvedValue(user);
@@ -150,6 +205,7 @@ describe('BorrowService', () => {
         },
       });
       expect(borrowRepository.create).toHaveBeenCalledWith({
+        borrowCode,
         user,
         book,
         dueDate: new Date(dto.dueDate),
@@ -244,10 +300,12 @@ describe('BorrowService', () => {
         async (record) => record as BorrowRecord,
       );
 
-      const result = await service.returnBook(5);
+      const result = await service.returnBook({
+        borrowCode: borrow.borrowCode,
+      } as ReturnBookDto);
 
       expect(borrowRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 5 },
+        where: { borrowCode: borrow.borrowCode },
         relations: ['book', 'user'],
       });
       expect(result.status).toBe(BorrowStatus.RETURNED);
@@ -259,9 +317,9 @@ describe('BorrowService', () => {
     it('should throw when the borrow record does not exist', async () => {
       borrowRepository.findOne!.mockResolvedValue(null);
 
-      await expect(service.returnBook(99)).rejects.toThrow(
-        new NotFoundException('Borrow record not found'),
-      );
+      await expect(
+        service.returnBook({ borrowCode: 'jjjj' } as ReturnBookDto),
+      ).rejects.toThrow(new NotFoundException('Borrow record not found'));
       expect(borrowRepository.save).not.toHaveBeenCalled();
       expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });
@@ -274,9 +332,9 @@ describe('BorrowService', () => {
         }),
       );
 
-      await expect(service.returnBook(8)).rejects.toThrow(
-        new BadRequestException('Book already returned'),
-      );
+      await expect(
+        service.returnBook({ borrowCode: 'BOR-0001-0001' } as ReturnBookDto),
+      ).rejects.toThrow(new BadRequestException('Book already returned'));
       expect(borrowRepository.save).not.toHaveBeenCalled();
       expect(httpErrorsCounter.inc).toHaveBeenCalledTimes(1);
     });

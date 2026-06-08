@@ -1,6 +1,7 @@
-import { IsNumber } from 'class-validator';
-
+import { IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 export class ReturnBookDto {
-  @IsNumber()
-  borrowId: number;
+  @ApiProperty()
+  @IsString()
+  borrowCode: string;
 }

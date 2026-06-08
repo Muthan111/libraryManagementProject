@@ -127,6 +127,7 @@ describe('AuthService', () => {
         service.login({
           id: 7,
           name: 'Login User',
+          customerCode: 'CUST-WSDC-1234',
           email: 'login@example.com',
           role: Role.ADMIN,
         }),
@@ -137,6 +138,7 @@ describe('AuthService', () => {
       expect(jwtService.sign).toHaveBeenCalledWith({
         sub: 7,
         name: 'Login User',
+        customerCode: 'CUST-WSDC-1234',
         email: 'login@example.com',
         role: Role.ADMIN,
       });
@@ -151,6 +153,7 @@ describe('AuthService', () => {
         service.login({
           id: 1,
           name: 'Test User',
+          customerCode: 'CUST-WSDC-1234',
           email: 'test@test.com',
           role: Role.ADMIN,
         }),

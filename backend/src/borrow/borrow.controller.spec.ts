@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BorrowBookDto } from './borrow-book.dto';
+import { ReturnBookDto } from './return-book.dto';
 import { BorrowController } from './borrow.controller';
 import { BorrowStatus } from './borrow.entity';
 import { BorrowService } from './borrow.service';
@@ -59,7 +60,8 @@ describe('BorrowController', () => {
   });
 
   describe('returnBook', () => {
-    it('should convert the id to a number and delegate to the service', async () => {
+    it('should pass the dto to the service and return the result', async () => {
+      const dto: ReturnBookDto = { borrowCode: 'BOR-0001-0004' } as any;
       const returnedBorrow = {
         id: 4,
         status: BorrowStatus.RETURNED,
@@ -68,19 +70,20 @@ describe('BorrowController', () => {
 
       service.returnBook.mockResolvedValue(returnedBorrow);
 
-      await expect(controller.returnBook('4' as never)).resolves.toEqual(
+      await expect(controller.returnBook(dto as never)).resolves.toEqual(
         returnedBorrow,
       );
-      expect(service.returnBook).toHaveBeenCalledWith(4);
+      expect(service.returnBook).toHaveBeenCalledWith(dto);
     });
 
-    it('should pass NaN through when the return id is invalid', async () => {
+    it('should pass invalid dto values through to the service', async () => {
+      const dto: ReturnBookDto = { borrowCode: 'oops' } as any;
       service.returnBook.mockResolvedValue({ id: NaN });
 
-      await expect(controller.returnBook('oops' as never)).resolves.toEqual({
+      await expect(controller.returnBook(dto as never)).resolves.toEqual({
         id: NaN,
       });
-      expect(service.returnBook.mock.calls[0][0]).toBeNaN();
+      expect(service.returnBook).toHaveBeenCalledWith(dto);
     });
   });
 

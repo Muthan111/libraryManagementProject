@@ -19,6 +19,9 @@ export class BorrowRecord {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column()
+  borrowCode: string;
+
   @ManyToOne(() => User, (user) => user.borrowRecords, {
     onDelete: 'CASCADE',
   })

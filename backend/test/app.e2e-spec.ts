@@ -325,6 +325,7 @@ describe('Library API (e2e)', () => {
   let bookCode: string;
   let bookId: number;
   let borrowId: number;
+  let borrowCode: string;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = 'e2e-secret';
@@ -605,6 +606,8 @@ describe('Library API (e2e)', () => {
         .expect(201);
 
       borrowId = borrowResponse.body.id;
+      // capture borrowCode for the return endpoint which accepts a borrowCode body
+      borrowCode = borrowResponse.body.borrowCode;
       expect(borrowResponse.body.status).toBe(BorrowStatus.BORROWED);
 
       await request(app.getHttpServer())
@@ -635,7 +638,8 @@ describe('Library API (e2e)', () => {
         });
 
       await request(app.getHttpServer())
-        .post(`/borrow/${borrowId}/return`)
+        .post(`/borrow/return`)
+        .send({ borrowCode })
         .expect(201)
         .expect(({ body }) => {
           expect(body.status).toBe(BorrowStatus.RETURNED);
