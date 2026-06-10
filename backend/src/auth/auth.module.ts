@@ -18,7 +18,7 @@ import { MetricsModule } from '../metrics/metrics.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'secret',
+        secret: configService.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: '60s' },
       }),
     }),

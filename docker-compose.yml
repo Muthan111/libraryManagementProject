@@ -4,6 +4,8 @@ services:
         context: ./frontend
         dockerfile: Dockerfile
       container_name: library-frontend
+      env_file:
+      - ./backend/.env.prod
       ports:
         - "5173:80"
       depends_on:
