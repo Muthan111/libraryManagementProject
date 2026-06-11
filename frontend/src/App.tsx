@@ -35,7 +35,6 @@ function App() {
     <div>
       <Navbar />
       <Chatbot />
-      <Button label="Click me" />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

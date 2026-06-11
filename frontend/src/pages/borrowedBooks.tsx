@@ -21,6 +21,46 @@ type borrowUsers = {
 const BorrowedBooks = () => {
   const baseAPI = import.meta.env.VITE_BASE_API;
   const [records, setRecords] = useState<borrowUsers[]>([]);
+  const handleReturnBook = async (borrowId: string) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${baseAPI}/borrow/return`, {
+        method: "POST", // or POST depending on your backend
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          borrowCode: borrowId,
+        }),
+      });
+      console.log(response);
+      const data = await response.json();
+      console.log(data);
+
+      if (!response.ok) {
+        console.error("Failed to return book");
+        return;
+      }
+
+      // update UI after success
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.borrowCode === borrowId
+            ? {
+                ...r,
+                status: "RETURNED",
+                returnDate: new Date().toISOString(),
+              }
+            : r,
+        ),
+      );
+    } catch (err) {
+      console.error("Error returning book:", err);
+    }
+  };
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -29,6 +69,11 @@ const BorrowedBooks = () => {
     const fetchRecords = async () => {
       const response = await fetch(
         `${baseAPI}/borrow/user/${decoded.customerCode}`,
+        {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+          },
+        },
       );
       if (!response.ok) {
         console.error("Failed to fetch borrow records");
@@ -111,6 +156,23 @@ const BorrowedBooks = () => {
                   <strong>Returned:</strong>{" "}
                   {new Date(record.returnDate).toLocaleDateString()}
                 </p>
+              )}
+              {record.status === "BORROWED" && (
+                <button
+                  onClick={() => handleReturnBook(record.borrowCode)}
+                  style={{
+                    marginTop: "12px",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    border: "none",
+                    cursor: "pointer",
+                    backgroundColor: "#2563eb",
+                    color: "white",
+                    fontWeight: "bold",
+                  }}
+                >
+                  Return Book
+                </button>
               )}
             </div>
           ))

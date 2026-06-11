@@ -37,6 +37,11 @@ const BookDetail = () => {
       const dueDate = new Date(
         Date.now() + 14 * 24 * 60 * 60 * 1000,
       ).toISOString(); // default 14 days
+      const bookCode = book?.bookCode;
+      if (!bookCode) {
+        console.error("No book selected to borrow");
+        return; // or show UI error / set state
+      }
       const res = await authFetch(`${API_BASE}/borrow`, {
         method: "POST",
         body: JSON.stringify({

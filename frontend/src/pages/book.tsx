@@ -26,26 +26,78 @@ const Book = () => {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState("name");
+  const fetchBooks = async () => {
+    try {
+      setErrorMessage("");
+      setIsLoading(true);
+      const response = await fetch(`${baseAPI}/${fetchURL}`);
 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const response = await fetch(`${baseAPI}/${fetchURL}`);
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch books");
-        }
-
-        const result: BooksResponse = await response.json();
-
-        setBooks(result.data);
-      } catch {
-        setErrorMessage("Could not load books right now.");
-      } finally {
-        setIsLoading(false);
+      if (response.status === 404) {
+        setBooks([]);
+        return;
       }
-    };
 
+      const result: BooksResponse = await response.json();
+
+      setBooks(result.data);
+    } catch {
+      setErrorMessage("Could not load books right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) {
+      await fetchBooks();
+      return;
+    }
+
+    let endpoint = "";
+
+    switch (searchType) {
+      case "name":
+        endpoint = import.meta.env.VITE_SEARCH_BY_NAME;
+        break;
+
+      case "author":
+        endpoint = import.meta.env.VITE_SEARCH_BY_AUTHOR;
+        break;
+
+      case "isbn":
+        endpoint = import.meta.env.VITE_SEARCH_BY_ISBN;
+        break;
+
+      default:
+        return;
+    }
+
+    try {
+      setErrorMessage("");
+      // setIsLoading(true);
+      setIsLoading(true);
+      const URL = `${baseAPI}/${endpoint}/${encodeURIComponent(searchTerm)}`;
+      const response = await fetch(URL);
+
+      console.log(URL);
+      console.log(response);
+      if (response.status === 404) {
+        setBooks([]);
+        console.log("Error");
+        return;
+      }
+
+      const result: BookItem = await response.json();
+      console.log([result]);
+      setBooks([result]);
+    } catch {
+      setErrorMessage("Search failed.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
     fetchBooks();
   }, []);
 
@@ -70,6 +122,34 @@ const Book = () => {
       <div className="section-heading">
         <h1>Browse books</h1>
         <p>Select a book to view more details.</p>
+      </div>
+      <div className="search-container">
+        <select
+          value={searchType}
+          onChange={(e) => setSearchType(e.target.value)}
+        >
+          <option value="name">Book Name</option>
+          <option value="author">Author</option>
+          <option value="isbn">ISBN</option>
+        </select>
+
+        <input
+          type="text"
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+
+        <button onClick={handleSearch}>Search</button>
+
+        <button
+          onClick={() => {
+            setSearchTerm("");
+            fetchBooks();
+          }}
+        >
+          Clear
+        </button>
       </div>
 
       <section className="book-grid">
