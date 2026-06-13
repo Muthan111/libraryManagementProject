@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import "./Chatbot.css";
 
 // Backend chat API endpoint (returns JSON: { reply: string })
-const CHAT_URL = "http://localhost:3000/chat";
+const secretURL = import.meta.env.VITE_CHATBOT;
+const CHAT_URL = `${secretURL}`;
 
 type Message = { id: string; role: "user" | "assistant"; text: string };
 
@@ -79,6 +80,7 @@ export default function Chatbot() {
         aria-expanded={open}
         aria-label={open ? "Close chat" : "Open chat"}
         onClick={() => setOpen((s) => !s)}
+        type="button"
       >
         {open ? "✕" : "💬"}
       </button>
@@ -90,6 +92,7 @@ export default function Chatbot() {
             className="lm-chatbot-close"
             aria-label="Close chat"
             onClick={() => setOpen(false)}
+            type="button"
           >
             ✕
           </button>
@@ -136,6 +139,7 @@ export default function Chatbot() {
               className="lm-chatbot-send"
               onClick={sendMessage}
               disabled={loading || input.trim() === ""}
+              type="button"
             >
               {loading ? "Sending…" : "Send"}
             </button>

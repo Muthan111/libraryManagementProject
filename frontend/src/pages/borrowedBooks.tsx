@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getToken, parseJwt } from "../utils/auth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type borrowUsers = {
   id: number;
@@ -18,9 +19,13 @@ type borrowUsers = {
     borrowedById: number | null;
   };
 };
+const baseAPI = import.meta.env.VITE_BASE_API;
 const BorrowedBooks = () => {
-  const baseAPI = import.meta.env.VITE_BASE_API;
-  const [records, setRecords] = useState<borrowUsers[]>([]);
+  const token = getToken();
+  const decoded = token ? parseJwt(token) : null;
+  const customerCode = decoded?.customerCode;
+  const queryClient = useQueryClient();
+  // const [records, setRecords] = useState<borrowUsers[]>([]);
   const handleReturnBook = async (borrowId: string) => {
     const token = getToken();
     if (!token) return;
@@ -36,9 +41,6 @@ const BorrowedBooks = () => {
           borrowCode: borrowId,
         }),
       });
-      console.log(response);
-      const data = await response.json();
-      console.log(data);
 
       if (!response.ok) {
         console.error("Failed to return book");
@@ -46,46 +48,67 @@ const BorrowedBooks = () => {
       }
 
       // update UI after success
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.borrowCode === borrowId
-            ? {
-                ...r,
-                status: "RETURNED",
-                returnDate: new Date().toISOString(),
-              }
-            : r,
-        ),
-      );
+      await queryClient.invalidateQueries({
+        queryKey: ["borrowedBooks", customerCode],
+      });
     } catch (err) {
       console.error("Error returning book:", err);
     }
   };
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    const decoded = parseJwt(token);
-    console.log(decoded.customerCode);
-    const fetchRecords = async () => {
-      const response = await fetch(
-        `${baseAPI}/borrow/user/${decoded.customerCode}`,
-        {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-          },
+  // useEffect(() => {
+  //   const token = getToken();
+  //   if (!token) return;
+  //   const decoded = parseJwt(token);
+  //   console.log(decoded.customerCode);
+  //   const fetchRecords = async () => {
+  //     const response = await fetch(
+  //       `${baseAPI}/borrow/user/${decoded.customerCode}`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${getToken()}`,
+  //         },
+  //       },
+  //     );
+  //     if (!response.ok) {
+  //       console.error("Failed to fetch borrow records");
+  //       return;
+  //     }
+  //     const data = await response.json();
+  //     setRecords(data);
+  //     console.log(data);
+  //     return data;
+  //   };
+  //   fetchRecords();
+  // }, []);
+
+  const {
+    data: records = [],
+    isLoading,
+    error,
+  } = useQuery<borrowUsers[]>({
+    queryKey: ["borrowedBooks", customerCode],
+    enabled: !!customerCode,
+    queryFn: async () => {
+      const response = await fetch(`${baseAPI}/borrow/user/${customerCode}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
       if (!response.ok) {
-        console.error("Failed to fetch borrow records");
-        return;
+        throw new Error("Failed to fetch borrow records");
       }
-      const data = await response.json();
-      setRecords(data);
-      console.log(data);
-      return data;
-    };
-    fetchRecords();
-  }, []);
+
+      return response.json();
+    },
+  });
+
+  if (isLoading) {
+    return <p>Loading borrowed books...</p>;
+  }
+
+  if (error) {
+    return <p>Failed to load borrowed books.</p>;
+  }
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
       <h1
@@ -105,8 +128,8 @@ const BorrowedBooks = () => {
           gap: "16px",
         }}
       >
-        {records.length > 0 ? (
-          records.map((record) => (
+        {records?.length > 0 ? (
+          records?.map((record) => (
             <div
               key={record.id}
               style={{
@@ -170,6 +193,7 @@ const BorrowedBooks = () => {
                     color: "white",
                     fontWeight: "bold",
                   }}
+                  type="button"
                 >
                   Return Book
                 </button>

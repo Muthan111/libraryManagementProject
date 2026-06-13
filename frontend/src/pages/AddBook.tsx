@@ -66,11 +66,15 @@ const AddBook = () => {
 
         <div>
           <label htmlFor="ISBN">ISBN</label>
-          <input value={ISBN} onChange={(e) => setISBN(e.target.value)} />
+          <input
+            id="ISBN"
+            value={ISBN}
+            onChange={(e) => setISBN(e.target.value)}
+          />
         </div>
 
         <div>
-          <label>Status</label>
+          <label htmlFor="Status">Status</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="available">Available</option>
             <option value="borrowed">Borrowed</option>

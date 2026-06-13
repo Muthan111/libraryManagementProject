@@ -19,10 +19,12 @@ type BooksResponse = {
     totalPages: number;
   };
 };
-
+const baseAPI = import.meta.env.VITE_BASE_API;
+const fetchURL = import.meta.env.VITE_BOOK_GET;
+const nameSearch = import.meta.env.VITE_SEARCH_BY_NAME;
+const ISBNSearch = import.meta.env.VITE_SEARCH_BY_ISBN;
+const authorSearch = import.meta.env.VITE_SEARCH_BY_AUTHOR;
 const Book = () => {
-  const baseAPI = import.meta.env.VITE_BASE_API;
-  const fetchURL = import.meta.env.VITE_BOOK_GET;
   const [books, setBooks] = useState<BookItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -58,15 +60,15 @@ const Book = () => {
 
     switch (searchType) {
       case "name":
-        endpoint = import.meta.env.VITE_SEARCH_BY_NAME;
+        endpoint = `${nameSearch}`;
         break;
 
       case "author":
-        endpoint = import.meta.env.VITE_SEARCH_BY_AUTHOR;
+        endpoint = `${authorSearch}`;
         break;
 
       case "isbn":
-        endpoint = import.meta.env.VITE_SEARCH_BY_ISBN;
+        endpoint = `${ISBNSearch}`;
         break;
 
       default:
@@ -137,16 +139,20 @@ const Book = () => {
           type="text"
           placeholder="Search..."
           value={searchTerm}
+          aria-label="Search Term"
           onChange={(e) => setSearchTerm(e.target.value)}
         />
 
-        <button onClick={handleSearch}>Search</button>
+        <button type="submit" onClick={handleSearch}>
+          Search
+        </button>
 
         <button
           onClick={() => {
             setSearchTerm("");
             fetchBooks();
           }}
+          type="button"
         >
           Clear
         </button>

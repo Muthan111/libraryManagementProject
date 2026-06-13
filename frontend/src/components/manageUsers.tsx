@@ -7,9 +7,8 @@ type User = {
   email: string;
   role: string;
 };
+const baseAPI = import.meta.env.VITE_BASE_API;
 const ManageUsers = () => {
-  const baseAPI = import.meta.env.VITE_BASE_API;
-
   const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   console.log("getToken:", getToken());
@@ -89,11 +88,15 @@ const ManageUsers = () => {
                 <td>
                   <button
                     onClick={() => navigate(`/admin/users/edit/${user.userid}`)}
+                    type="button"
                   >
                     Edit
                   </button>
 
-                  <button onClick={() => deleteUser(user.customerCode)}>
+                  <button
+                    type="button"
+                    onClick={() => deleteUser(user.customerCode)}
+                  >
                     Delete
                   </button>
                 </td>

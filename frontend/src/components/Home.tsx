@@ -1,23 +1,34 @@
 import { useEffect, useState } from "react";
 import Form from "../components/form";
+import { useQuery } from "@tanstack/react-query";
 const highlights = [
   "Search for books and discover what is available.",
   "Create a member account to manage borrowing activity.",
   "Keep track of your reading with a simple library experience.",
 ];
+const baseURL = import.meta.env.VITE_BASE_API;
 
 const Home = () => {
   const [backendMessage, setBackendMessage] = useState(
     "Checking backend connection...",
   );
-  const baseURL = import.meta.env.VITE_BASE_API;
-  useEffect(() => {
-    fetch(`${baseURL}`)
-      .then((response) => response.text())
-      .then((message) => setBackendMessage(message))
-      .catch(() => setBackendMessage("Backend is currently unavailable."));
-  }, []);
 
+  // useEffect(() => {
+  //   fetch(`${baseURL}`)
+  //     .then((response) => response.text())
+  //     .then((message) => setBackendMessage(message))
+  //     .catch(() => setBackendMessage("Backend is currently unavailable."));
+  // }, []);
+  const { data: backendMessageQuery } = useQuery({
+    queryKey: ["backendMessage"],
+    queryFn: async () => {
+      const response = await fetch(`${baseURL}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch backend message");
+      }
+      return response.text();
+    },
+  });
   return (
     <main className="home-page">
       <section className="hero-section" id="welcome">
@@ -35,7 +46,7 @@ const Home = () => {
           </ul>
           <div className="status-panel">
             <span className="status-label">Library service</span>
-            <p>{backendMessage}</p>
+            <p>{backendMessageQuery}</p>
           </div>
         </div>
         <Form />

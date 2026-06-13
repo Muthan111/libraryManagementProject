@@ -58,7 +58,11 @@ const Navbar = () => {
               </span>
             </li>
             <li>
-              <button className="link-button" onClick={handleLogout}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={handleLogout}
+              >
                 Logout
               </button>
             </li>

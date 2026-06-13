@@ -8,9 +8,10 @@ type Book = {
   Author: string;
   ISBN: string;
 };
+const baseAPI = import.meta.env.VITE_BASE_API;
+const fetchURL = import.meta.env.VITE_BOOK_GET;
 const ManageBooks = () => {
-  const baseAPI = import.meta.env.VITE_BASE_API;
-  const fetchURL = import.meta.env.VITE_BOOK_GET;
+  
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -75,6 +76,7 @@ const ManageBooks = () => {
           <button
             className="primary-button"
             onClick={() => navigate("/admin/add")}
+            type="button"
           >
             Add Book
           </button>
@@ -97,11 +99,12 @@ const ManageBooks = () => {
                 <td>
                   <button
                     onClick={() => navigate(`/admin/edit/${book.bookid}`)}
+                    type="button"
                   >
                     Edit
                   </button>
 
-                  <button onClick={() => deleteBook(book.bookid)}>
+                  <button type="button" onClick={() => deleteBook(book.bookid)}>
                     Delete
                   </button>
                 </td>
