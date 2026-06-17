@@ -13,40 +13,12 @@ export default function Chatbot() {
   const [loading, setLoading] = useState(false);
 
   const endRef = useRef<HTMLDivElement | null>(null);
-  const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     if (endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, open]);
-
-  // sync state -> dialog
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open && !dialog.open) {
-      dialog.showModal();
-    }
-
-    if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
-
-  // sync dialog -> state (ESC / backdrop close)
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => setOpen(false);
-    dialog.addEventListener("close", handleClose);
-
-    return () => {
-      dialog.removeEventListener("close", handleClose);
-    };
-  }, []);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -99,7 +71,8 @@ export default function Chatbot() {
   };
 
   return (
-    <>
+    <div className="lm-chatbot">
+      {/* toggle button */}
       <button
         className="lm-chatbot-toggle"
         aria-label={open ? "Close chat" : "Open chat"}
@@ -110,7 +83,8 @@ export default function Chatbot() {
         {open ? "✕" : "💬"}
       </button>
 
-      <dialog ref={dialogRef} className="lm-chatbot-panel">
+      {/* panel */}
+      <div className={`lm-chatbot-panel ${open ? "open" : ""}`}>
         <div className="lm-chatbot-header">
           <div className="lm-chatbot-title">Chat</div>
 
@@ -176,7 +150,7 @@ export default function Chatbot() {
             </button>
           </div>
         </div>
-      </dialog>
-    </>
+      </div>
+    </div>
   );
 }
