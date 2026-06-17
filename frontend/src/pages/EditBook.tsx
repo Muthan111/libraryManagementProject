@@ -1,29 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getToken, parseJwt } from "../utils/auth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { getToken } from "../utils/auth";
+import { useQuery } from "@tanstack/react-query";
 const baseAPI = import.meta.env.VITE_BASE_API;
+type State = {
+  name: string;
+  Author: string;
+  ISBN: string;
+  bookCode: string;
+  submitting: boolean;
+};
+
+const initialState: State = {
+  name: "",
+  Author: "",
+  ISBN: "",
+  bookCode: "",
+  submitting: false,
+};
+
+type Action =
+  | { type: "SET_FIELD"; field: keyof State; value: string }
+  | { type: "SET_BOOK"; payload: Omit<State, "submitting"> }
+  | { type: "SET_SUBMITTING"; payload: boolean };
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_FIELD":
+      return {
+        ...state,
+        [action.field]: action.value,
+      };
+
+    case "SET_BOOK":
+      return {
+        ...state,
+        ...action.payload,
+      };
+
+    case "SET_SUBMITTING":
+      return {
+        ...state,
+        submitting: action.payload,
+      };
+
+    default:
+      return state;
+  }
+}
 const EditBook = () => {
   const token = getToken();
-  const decoded = token ? parseJwt(token) : null;
-  const customerCode = decoded?.customerCode;
+  // const decoded = token ? parseJwt(token) : null;
+  // const customerCode = decoded?.customerCode;
   // const queryClient = useQueryClient();
   const { id } = useParams<{ id: string }>();
 
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [Author, setAuthor] = useState("");
-  const [ISBN, setISBN] = useState("");
-  const [bookCode, setBookCode] = useState("");
-  // const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const {
-    data: book,
-    isLoading,
-    error,
-  } = useQuery({
+  const { data: book, isLoading } = useQuery({
     queryKey: ["book", id],
     enabled: !!id,
     queryFn: async () => {
@@ -45,15 +80,23 @@ const EditBook = () => {
     // const b = book?.data || book;
     if (!b) return;
 
-    setName(b.name ?? "");
-    setAuthor(b.Author ?? "");
-    setISBN(b.ISBN ?? "");
-    setBookCode(b.bookCode ?? "");
+    dispatch({
+      type: "SET_BOOK",
+      payload: {
+        name: b.name ?? "",
+        Author: b.Author ?? "",
+        ISBN: b.ISBN ?? "",
+        bookCode: b.bookCode ?? "",
+      },
+    });
   }, [book]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
-    setSubmitting(true);
+    dispatch({
+      type: "SET_SUBMITTING",
+      payload: true,
+    });
 
     try {
       const res = await fetch(`${baseAPI}/book/${id}`, {
@@ -62,7 +105,12 @@ const EditBook = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ name, Author, ISBN, bookCode }),
+        body: JSON.stringify({
+          name: state.name,
+          Author: state.Author,
+          ISBN: state.ISBN,
+          bookCode: state.bookCode,
+        }),
       });
 
       if (!res.ok) {
@@ -74,7 +122,10 @@ const EditBook = () => {
     } catch (err) {
       alert((err as Error).message || "Error updating book");
     } finally {
-      setSubmitting(false);
+      dispatch({
+        type: "SET_SUBMITTING",
+        payload: false,
+      });
     }
   };
 
@@ -89,8 +140,14 @@ const EditBook = () => {
           <label htmlFor="name">Name</label>
           <input
             id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={state.name}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "name",
+                value: e.target.value,
+              })
+            }
             required
           />
         </div>
@@ -99,8 +156,14 @@ const EditBook = () => {
           <label htmlFor="Author">Author</label>
           <input
             id="Author"
-            value={Author}
-            onChange={(e) => setAuthor(e.target.value)}
+            value={state.Author}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "Author",
+                value: e.target.value,
+              })
+            }
             required
           />
         </div>
@@ -109,8 +172,14 @@ const EditBook = () => {
           <label htmlFor="ISBN">ISBN</label>
           <input
             id="ISBN"
-            value={ISBN}
-            onChange={(e) => setISBN(e.target.value)}
+            value={state.ISBN}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "ISBN",
+                value: e.target.value,
+              })
+            }
           />
         </div>
 
@@ -118,14 +187,20 @@ const EditBook = () => {
           <label htmlFor="BookCode">Book Code</label>
           <input
             id="BookCode"
-            value={bookCode}
-            onChange={(e) => setBookCode(e.target.value)}
+            value={state.bookCode}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "bookCode",
+                value: e.target.value,
+              })
+            }
           />
         </div>
 
         <div>
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Saving..." : "Save"}
+          <button type="submit" disabled={state.submitting}>
+            {state.submitting ? "Saving..." : "Save"}
           </button>
           <button type="button" onClick={() => navigate("/admin")}>
             Cancel

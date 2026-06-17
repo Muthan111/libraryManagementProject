@@ -1,28 +1,33 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
 import { getToken, parseJwt, removeToken } from "../utils/auth";
 
 const Navbar = () => {
-  const [user, setUser] = useState<{ email?: string; role?: string } | null>(
-    null,
-  );
+  // const [user, setUser] = useState<{ email?: string; role?: string } | null>(
+  //   null,
+  // );
+  const token = getToken();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const token = getToken();
-    if (token) {
-      const payload: any = parseJwt(token);
-      setUser({ email: payload?.email, role: payload?.role });
-    } else {
-      setUser(null);
-    }
-  }, []);
+  const user = token
+    ? (() => {
+        const payload: any = parseJwt(token);
+        return { email: payload?.email, role: payload?.role };
+      })()
+    : null;
 
   const handleLogout = () => {
     removeToken();
-    setUser(null);
     navigate("/");
   };
+
+  // useEffect(() => {
+  //   const token = getToken();
+  //   if (token) {
+  //     const payload: any = parseJwt(token);
+  //     setUser({ email: payload?.email, role: payload?.role });
+  //   } else {
+  //     setUser(null);
+  //   }
+  // }, []);
 
   return (
     <nav className="top-nav" aria-label="Primary">
@@ -50,6 +55,7 @@ const Navbar = () => {
         <li>
           <Link to="/admin">Admin</Link>
         </li>
+
         {user ? (
           <>
             <li className="nav-user">
@@ -57,6 +63,7 @@ const Navbar = () => {
                 {user.email || "Member"} {user.role ? `(${user.role})` : ""}
               </span>
             </li>
+
             <li>
               <button
                 type="button"

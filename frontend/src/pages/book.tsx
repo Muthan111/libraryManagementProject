@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 type BookItem = {
   bookid: number;
@@ -10,6 +10,68 @@ type BookItem = {
   status: string;
   borrowedById: string | null;
 };
+type State = {
+  books: BookItem[];
+  isLoading: boolean;
+  errorMessage: string;
+  searchTerm: string;
+  searchType: string;
+};
+const initialState: State = {
+  books: [],
+  isLoading: true,
+  errorMessage: "",
+  searchTerm: "",
+  searchType: "name",
+};
+
+type Action =
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; payload: BookItem[] }
+  | { type: "FETCH_ERROR"; payload: string }
+  | { type: "SET_SEARCH_TERM"; payload: string }
+  | { type: "SET_SEARCH_TYPE"; payload: string };
+
+function bookReducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "FETCH_START":
+      return {
+        ...state,
+        isLoading: true,
+        errorMessage: "",
+      };
+
+    case "FETCH_SUCCESS":
+      return {
+        ...state,
+        books: action.payload,
+        isLoading: false,
+      };
+
+    case "FETCH_ERROR":
+      return {
+        ...state,
+        errorMessage: action.payload,
+        isLoading: false,
+      };
+
+    case "SET_SEARCH_TERM":
+      return {
+        ...state,
+        searchTerm: action.payload,
+      };
+
+    case "SET_SEARCH_TYPE":
+      return {
+        ...state,
+        searchType: action.payload,
+      };
+
+    default:
+      return state;
+  }
+}
+
 type BooksResponse = {
   data: BookItem[];
   meta: {
@@ -24,30 +86,40 @@ const fetchURL = import.meta.env.VITE_BOOK_GET;
 const nameSearch = import.meta.env.VITE_SEARCH_BY_NAME;
 const ISBNSearch = import.meta.env.VITE_SEARCH_BY_ISBN;
 const authorSearch = import.meta.env.VITE_SEARCH_BY_AUTHOR;
+
 const Book = () => {
-  const [books, setBooks] = useState<BookItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchType, setSearchType] = useState("name");
+  // const [books, setBooks] = useState<BookItem[]>([]);
+  // const [isLoading, setIsLoading] = useState(true);
+  // const [errorMessage, setErrorMessage] = useState("");
+  // const [searchTerm, setSearchTerm] = useState("");
+  // const [searchType, setSearchType] = useState("name");
+
+  const [state, dispatch] = useReducer(bookReducer, initialState);
+  const { books, isLoading, errorMessage, searchTerm, searchType } = state;
   const fetchBooks = async () => {
     try {
-      setErrorMessage("");
-      setIsLoading(true);
+      dispatch({ type: "FETCH_START" });
       const response = await fetch(`${baseAPI}/${fetchURL}`);
 
       if (response.status === 404) {
-        setBooks([]);
+        dispatch({
+          type: "FETCH_SUCCESS",
+          payload: [],
+        });
         return;
       }
 
       const result: BooksResponse = await response.json();
 
-      setBooks(result.data);
+      dispatch({
+        type: "FETCH_SUCCESS",
+        payload: result.data,
+      });
     } catch {
-      setErrorMessage("Could not load books right now.");
-    } finally {
-      setIsLoading(false);
+      dispatch({
+        type: "FETCH_ERROR",
+        payload: "Could not load books right now.",
+      });
     }
   };
   const handleSearch = async () => {
@@ -56,7 +128,7 @@ const Book = () => {
       return;
     }
 
-    let endpoint = "";
+    let endpoint;
 
     switch (searchType) {
       case "name":
@@ -76,27 +148,29 @@ const Book = () => {
     }
 
     try {
-      setErrorMessage("");
-      // setIsLoading(true);
-      setIsLoading(true);
+      dispatch({ type: "FETCH_START" });
       const URL = `${baseAPI}/${endpoint}/${encodeURIComponent(searchTerm)}`;
       const response = await fetch(URL);
 
-      console.log(URL);
-      console.log(response);
       if (response.status === 404) {
-        setBooks([]);
+        dispatch({
+          type: "FETCH_SUCCESS",
+          payload: [],
+        });
         console.log("Error");
         return;
       }
 
       const result: BookItem = await response.json();
-      console.log([result]);
-      setBooks([result]);
+      dispatch({
+        type: "FETCH_SUCCESS",
+        payload: [result],
+      });
     } catch {
-      setErrorMessage("Search failed.");
-    } finally {
-      setIsLoading(false);
+      dispatch({
+        type: "FETCH_ERROR",
+        payload: "Search failed.",
+      });
     }
   };
   useEffect(() => {
@@ -128,7 +202,12 @@ const Book = () => {
       <div className="search-container">
         <select
           value={searchType}
-          onChange={(e) => setSearchType(e.target.value)}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_SEARCH_TYPE",
+              payload: e.target.value,
+            })
+          }
         >
           <option value="name">Book Name</option>
           <option value="author">Author</option>
@@ -140,7 +219,12 @@ const Book = () => {
           placeholder="Search..."
           value={searchTerm}
           aria-label="Search Term"
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) =>
+            dispatch({
+              type: "SET_SEARCH_TERM",
+              payload: e.target.value,
+            })
+          }
         />
 
         <button type="submit" onClick={handleSearch}>
@@ -149,7 +233,10 @@ const Book = () => {
 
         <button
           onClick={() => {
-            setSearchTerm("");
+            dispatch({
+              type: "SET_SEARCH_TERM",
+              payload: "",
+            });
             fetchBooks();
           }}
           type="button"

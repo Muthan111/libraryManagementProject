@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./Chatbot.css";
 
-// Backend chat API endpoint (returns JSON: { reply: string })
 const secretURL = import.meta.env.VITE_CHATBOT;
 const CHAT_URL = `${secretURL}`;
 
@@ -12,13 +11,42 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+
   const endRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     if (endRef.current) {
       endRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, open]);
+
+  // sync state -> dialog
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (open && !dialog.open) {
+      dialog.showModal();
+    }
+
+    if (!open && dialog.open) {
+      dialog.close();
+    }
+  }, [open]);
+
+  // sync dialog -> state (ESC / backdrop close)
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleClose = () => setOpen(false);
+    dialog.addEventListener("close", handleClose);
+
+    return () => {
+      dialog.removeEventListener("close", handleClose);
+    };
+  }, []);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -44,50 +72,48 @@ export default function Chatbot() {
       if (!res.ok) throw new Error(`Chat API error ${res.status}`);
 
       const data = await res.json();
-      const reply = (data && (data.reply ?? data.message ?? "")) || "";
+      const reply = data?.reply ?? data?.message ?? "";
 
-      const assistantMsg: Message = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        role: "assistant",
-        text: reply,
-      };
-
-      setMessages((m) => [...m, assistantMsg]);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          role: "assistant",
+          text: reply,
+        },
+      ]);
     } catch (err) {
       console.error("Chat send error", err);
-      const errorMsg: Message = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        role: "assistant",
-        text: "Sorry — something went wrong. Please try again.",
-      };
-      setMessages((m) => [...m, errorMsg]);
+
+      setMessages((m) => [
+        ...m,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          role: "assistant",
+          text: "Sorry — something went wrong. Please try again.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
   return (
-    <div className={open ? "lm-chatbot lm-chatbot-open" : "lm-chatbot"}>
+    <>
       <button
         className="lm-chatbot-toggle"
-        aria-expanded={open}
         aria-label={open ? "Close chat" : "Open chat"}
+        aria-expanded={open}
         onClick={() => setOpen((s) => !s)}
         type="button"
       >
         {open ? "✕" : "💬"}
       </button>
 
-      <div className="lm-chatbot-panel" role="dialog" aria-hidden={!open}>
+      <dialog ref={dialogRef} className="lm-chatbot-panel">
         <div className="lm-chatbot-header">
           <div className="lm-chatbot-title">Chat</div>
+
           <button
             className="lm-chatbot-close"
             aria-label="Close chat"
@@ -129,7 +155,12 @@ export default function Chatbot() {
               className="lm-chatbot-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
               placeholder="Type a message…"
               aria-label="Type a message"
               disabled={loading}
@@ -145,7 +176,7 @@ export default function Chatbot() {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </dialog>
+    </>
   );
 }

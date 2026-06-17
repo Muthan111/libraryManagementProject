@@ -1,26 +1,37 @@
 import { useEffect, useState } from "react";
 import { getToken, parseJwt } from "../utils/auth";
-type User = {
-  name?: string;
-  email: string;
-  role: string;
-};
+// type User = {
+//   name?: string;
+//   email: string;
+//   role: string;
+// };
 
 const Profile = () => {
-  const [user, setUser] = useState<User | null>(null);
+  // const [user, setUser] = useState<User | null>(null);
+  const token = getToken();
+  // const navigate = useNavigate();
+  const user = token
+    ? (() => {
+        const payload: any = parseJwt(token);
+        return {
+          name: payload?.name,
+          email: payload?.email,
+          role: payload?.role,
+        };
+      })()
+    : null;
+  // useEffect(() => {
+  //   const token = getToken();
+  //   if (!token) return;
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
+  //   const decoded = parseJwt(token);
 
-    const decoded = parseJwt(token);
-
-    setUser({
-      name: decoded.name,
-      email: decoded.email,
-      role: decoded.role,
-    });
-  }, []);
+  //   setUser({
+  //     name: decoded.name,
+  //     email: decoded.email,
+  //     role: decoded.role,
+  //   });
+  // }, []);
 
   if (!user) return <p>Loading profile...</p>;
   return (

@@ -1,21 +1,59 @@
-import { useState } from "react";
+import { useState, useReducer } from "react";
 import { useNavigate } from "react-router-dom";
 import { getToken } from "../utils/auth";
+
+type State = {
+  name: string;
+  Author: string;
+  ISBN: string;
+  status: string;
+  submitting: boolean;
+};
+
+type Action =
+  | { type: "SET_FIELD"; field: keyof Omit<State, "submitting">; value: string }
+  | { type: "SET_SUBMITTING"; value: boolean }
+  | { type: "RESET" };
+
+const initialState: State = {
+  name: "",
+  Author: "",
+  ISBN: "",
+  status: "available",
+  submitting: false,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "SET_FIELD":
+      return {
+        ...state,
+        [action.field]: action.value,
+      };
+
+    case "SET_SUBMITTING":
+      return {
+        ...state,
+        submitting: action.value,
+      };
+
+    case "RESET":
+      return initialState;
+
+    default:
+      return state;
+  }
+}
 
 const AddBook = () => {
   const baseAPI = import.meta.env.VITE_BASE_API;
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [Author, setAuthor] = useState("");
-  const [ISBN, setISBN] = useState("");
-  const [status, setStatus] = useState("available");
-
-  const [submitting, setSubmitting] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
+    dispatch({ type: "SET_SUBMITTING", value: true });
 
     try {
       const res = await fetch(`${baseAPI}/book`, {
@@ -24,7 +62,12 @@ const AddBook = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ name, Author, ISBN, status }),
+        body: JSON.stringify({
+          name: state.name,
+          Author: state.Author,
+          ISBN: state.ISBN,
+          status: state.status,
+        }),
       });
 
       if (!res.ok) {
@@ -36,7 +79,7 @@ const AddBook = () => {
     } catch (err) {
       alert((err as Error).message || "Error creating book");
     } finally {
-      setSubmitting(false);
+      dispatch({ type: "SET_SUBMITTING", value: false });
     }
   };
 
@@ -48,8 +91,14 @@ const AddBook = () => {
           <label htmlFor="name">Name</label>
           <input
             id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={state.name}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "name",
+                value: e.target.value,
+              })
+            }
             required
           />
         </div>
@@ -58,8 +107,14 @@ const AddBook = () => {
           <label htmlFor="Author">Author</label>
           <input
             id="Author"
-            value={Author}
-            onChange={(e) => setAuthor(e.target.value)}
+            value={state.Author}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "Author",
+                value: e.target.value,
+              })
+            }
             required
           />
         </div>
@@ -68,14 +123,29 @@ const AddBook = () => {
           <label htmlFor="ISBN">ISBN</label>
           <input
             id="ISBN"
-            value={ISBN}
-            onChange={(e) => setISBN(e.target.value)}
+            value={state.ISBN}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "ISBN",
+                value: e.target.value,
+              })
+            }
           />
         </div>
 
         <div>
           <label htmlFor="Status">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select
+            value={status}
+            onChange={(e) =>
+              dispatch({
+                type: "SET_FIELD",
+                field: "status",
+                value: e.target.value,
+              })
+            }
+          >
             <option value="available">Available</option>
             <option value="borrowed">Borrowed</option>
           </select>
@@ -85,9 +155,9 @@ const AddBook = () => {
           <button
             className="primary-button"
             type="submit"
-            disabled={submitting}
+            disabled={state.submitting}
           >
-            {submitting ? "Saving..." : "Save"}
+            {state.submitting ? "Saving..." : "Save"}
           </button>
           <button type="button" onClick={() => navigate("/admin")}>
             Cancel
