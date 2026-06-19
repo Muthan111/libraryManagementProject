@@ -8,7 +8,7 @@ export function setupSecurity(app: INestApplication) {
     directives: {
       defaultSrc: ["'self'"],
       objectSrc: ["'none'"],
-      upgradeInsecureRequests: false,
+      upgradeInsecureRequests: [],
     },
   },
   hsts: {
@@ -21,5 +21,10 @@ export function setupSecurity(app: INestApplication) {
     origin: 'http://localhost:5173',
     credentials: true,
   });
-  app.disable('x-powered-by');
+  const httpAdapter = app.getHttpAdapter();
+
+  if (httpAdapter.getType() === 'express') {
+    const instance = httpAdapter.getInstance();
+    instance.disable('x-powered-by');
+  }
 }
