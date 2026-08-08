@@ -12,12 +12,15 @@ import { TimeoutService } from './timeout.service';
 import { RagController } from './rag.seed.controller';
 import { RagSeeder } from './rag.seed';
 import { MetricsModule } from '../metrics/metrics.module';
+import { ChatbotGateway } from './chatbot.gateway';
+import { ChatbotRedisProvider } from './chatbot-redis.provider';
 @Module({
   imports: [BookModule, MetricsModule],
 
   providers: [
     ChatbotService,
     ChatbotConversationStore,
+    ChatbotRedisProvider,
     RagService,
     ChatSessionFactory,
     ToolExecutor,
@@ -25,6 +28,7 @@ import { MetricsModule } from '../metrics/metrics.module';
     RoutingPolicy,
     TimeoutService,
     RagSeeder,
+    ChatbotGateway,
   ],
   controllers: [ChatbotController, RagController],
 })

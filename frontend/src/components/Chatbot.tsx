@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import "./Chatbot.css";
-
+import { io, Socket } from "socket.io-client";
 const secretURL = import.meta.env.VITE_CHATBOT;
 const CHAT_URL = `${secretURL}`;
 
@@ -11,8 +11,9 @@ export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-
+  const socketRef = useRef<Socket | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (endRef.current) {
@@ -20,7 +21,48 @@ export default function Chatbot() {
     }
   }, [messages, open]);
 
-  const sendMessage = async () => {
+  useEffect(() => {
+    const socket = io(CHAT_URL, { transports: ["websocket"] });
+    socketRef.current = socket;
+
+    const handleChatResponse = (response: any) => {
+      // clear the pending timeout now that a real response arrived
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
+      const reply = response?.error ? response.error : (response?.reply ?? "");
+
+      setMessages((m) => [
+        ...m,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          role: "assistant",
+          text: typeof reply === "string" ? reply : JSON.stringify(reply),
+        },
+      ]);
+
+      setLoading(false);
+    };
+
+    socket.on("chat-response", handleChatResponse);
+    socket.on("connect_error", (err) =>
+      console.error("connect_error", err.message),
+    );
+    socket.on("disconnect", (reason) => console.warn("disconnected", reason));
+
+    return () => {
+      socket.off("chat-response", handleChatResponse);
+      socket.disconnect();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  const sendMessage = () => {
     const text = input.trim();
     if (!text || loading) return;
 
@@ -34,40 +76,25 @@ export default function Chatbot() {
     setInput("");
     setLoading(true);
 
-    try {
-      const res = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
+    socketRef.current?.emit("chat", { message: text });
 
-      if (!res.ok) throw new Error(`Chat API error ${res.status}`);
-
-      const data = await res.json();
-      const reply = data?.reply ?? data?.message ?? "";
-
-      setMessages((m) => [
-        ...m,
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          role: "assistant",
-          text: reply,
-        },
-      ]);
-    } catch (err) {
-      console.error("Chat send error", err);
-
-      setMessages((m) => [
-        ...m,
-        {
-          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-          role: "assistant",
-          text: "Sorry — something went wrong. Please try again.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
+    // clear any stale pending timeout before starting a new one
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
     }
+
+    timeoutRef.current = setTimeout(() => {
+      setLoading(false);
+      setMessages((m) => [
+        ...m,
+        {
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          role: "assistant",
+          text: "Request timed out.",
+        },
+      ]);
+      timeoutRef.current = null;
+    }, 15000);
   };
 
   return (

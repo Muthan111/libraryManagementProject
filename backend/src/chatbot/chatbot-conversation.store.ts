@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { redisClient } from '../config/redis';
+import { ChatbotRedisProvider } from './chatbot-redis.provider';
 
 export type ConversationHistoryEntry = {
   role: 'user' | 'model';
@@ -11,6 +11,7 @@ export type ConversationHistoryEntry = {
 export class ChatbotConversationStore {
   private readonly historyLimit = this.resolveHistoryLimit();
   private readonly ttlSeconds = this.resolveTtlSeconds();
+  constructor(private readonly redisProvider: ChatbotRedisProvider) {}
 
   async getOrCreateConversationId(conversationId?: string): Promise<string> {
     return conversationId?.trim() || randomUUID();
@@ -19,6 +20,8 @@ export class ChatbotConversationStore {
   async loadHistory(
     conversationId: string,
   ): Promise<ConversationHistoryEntry[]> {
+    const redisClient = await this.redisProvider.getClient();
+
     const rawHistory = await redisClient.get(
       this.getConversationKey(conversationId),
     );
@@ -57,7 +60,7 @@ export class ChatbotConversationStore {
       { role: 'user' as const, text: userMessage },
       { role: 'model' as const, text: reply },
     ].slice(-this.historyLimit);
-
+    const redisClient = await this.redisProvider.getClient();
     await redisClient.set(
       this.getConversationKey(conversationId),
       JSON.stringify(nextHistory),

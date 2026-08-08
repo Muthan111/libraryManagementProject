@@ -58,7 +58,7 @@ export class ChatbotService {
     );
 
     const result = await this.timeoutService.withTimeout(
-      chat.sendMessage(enrichedMessage),
+      () => chat.sendMessage(enrichedMessage),
       this.timeoutMs,
       'rag response generation',
     );
@@ -75,7 +75,7 @@ export class ChatbotService {
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i += 1) {
       const result = await this.timeoutService.withTimeout(
-        chat.sendMessage(currentMessage),
+        () => chat.sendMessage(currentMessage),
         this.timeoutMs,
         'tool response generation',
       );
@@ -142,7 +142,7 @@ export class ChatbotService {
     message: string,
   ): Promise<void> {
     await this.timeoutService.withTimeout(
-      chat.sendMessage(this.promptBuilder.buildInitialPrompt(message)),
+      () => chat.sendMessage(this.promptBuilder.buildInitialPrompt(message)),
       this.timeoutMs,
       'initial chatbot prompt',
     );

@@ -15,7 +15,6 @@ import * as auth from "../utils/auth";
 describe("ManageBooks", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    (global as any).fetch = vi.fn();
   });
 
   it("shows loading then book rows", async () => {
@@ -23,7 +22,7 @@ describe("ManageBooks", () => {
     (auth.getToken as any).mockReturnValue("token");
     (auth.parseJwt as any).mockReturnValue({ role: "admin" });
 
-    (global as any).fetch.mockResolvedValueOnce({
+    (globalThis as any).fetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         data: [{ bookid: 1, bookCode: "b1", name: "Book One", Author: "Auth" }],

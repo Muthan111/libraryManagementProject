@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { redisClient } from '../config/redis';
+import { ChatbotRedisProvider } from './chatbot-redis.provider';
 
 @Injectable()
 export class RagService {
@@ -9,6 +9,7 @@ export class RagService {
   private embeddingModel = this.genAI.getGenerativeModel({
     model: 'gemini-embedding-001',
   });
+  constructor(private readonly redisProvider: ChatbotRedisProvider) {}
 
   async embed(text: string): Promise<number[]> {
     const result = await this.embeddingModel.embedContent(text);
@@ -25,6 +26,8 @@ export class RagService {
   }
 
   async indexBook(bookId: string, content: string) {
+    const redisClient = await this.redisProvider.getClient();
+
     const keys = await redisClient.keys(`rag:book:${bookId}:*`);
     if (keys.length) {
       await redisClient.del(keys);
@@ -61,6 +64,8 @@ export class RagService {
   }
   async search(query: string) {
     const queryVector = await this.embed(query);
+
+    const redisClient = await this.redisProvider.getClient();
 
     const keys = await redisClient.keys('rag:book:*');
 
